@@ -1,50 +1,46 @@
 import pandas as pd
 import duckdb as db
+import psycopg2
+import os
 
-path_cv = "C:/Users/lenna/Desktop/csv/"
-
-cn = pd.read_csv(path_cv + 'company_name.csv',
+path_cv = "/home/dertuchi/DBI/Init/csv/"
+'''
+company_name = pd.read_csv(path_cv + 'company_name.csv',
                  names=('id', 'name', 'country_code', 'imdb_id', 'name_pcode_nf', 'name_pcode_sf', 'md5sum'))
-ct = pd.read_csv(path_cv + 'company_type.csv', names=('id', 'kind'))
-it = pd.read_csv(path_cv + 'info_type.csv', names=('id', 'info'))
-it1 = pd.read_csv(path_cv + 'info_type.csv', names=('id', 'info'))
-it2 = pd.read_csv(path_cv + 'info_type.csv', names=('id', 'info'))
-mi = pd.read_csv(path_cv + 'movie_info.csv', names=('id', 'movie_id', 'info_type_id', 'info', 'note'))
-mi_idx = pd.read_csv(path_cv + 'movie_info_idx.csv', names=('id', 'movie_id', 'info_type_id', 'info', 'note'))
-t = pd.read_csv(path_cv + 'title.csv', low_memory=False, names=(
+company_type = pd.read_csv(path_cv + 'company_type.csv', names=('id', 'kind'))
+info_type = pd.read_csv(path_cv + 'info_type.csv', names=('id', 'info'))
+movie_info = pd.read_csv(path_cv + 'movie_info.csv', names=('id', 'movie_id', 'info_type_id', 'info', 'note'))
+movie_info_idx = pd.read_csv(path_cv + 'movie_info_idx.csv', names=('id', 'movie_id', 'info_type_id', 'info', 'note'))
+title = pd.read_csv(path_cv + 'title.csv', low_memory=False, names=(
     'id', 'title', 'imdb_index', 'kind_ind', 'production_year', 'imdb_id', 'phonetic_code', 'episode_of_id',
     'season_nr',
     'episode_nr', 'series_years', 'md5sum'))
-mc = pd.read_csv(path_cv + 'movie_companies.csv', names=('id', 'movie_id', 'company_id', 'company_type_id', 'note'))
-k = pd.read_csv(path_cv + 'keyword.csv', names=('id', 'keyword', 'phonetic_code'))
-lt = pd.read_csv(path_cv + 'link_type.csv', names=('id', 'link'))
-mk = pd.read_csv(path_cv + 'movie_keyword.csv', names=('id', 'movie_id', 'keyword_id'))
-ml = pd.read_csv(path_cv + 'movie_link.csv', names=('id', 'movie_id', 'linked_movie_id', 'link_type_id'))
-ci = pd.read_csv(path_cv + 'cast_info.csv', low_memory=False,
+movie_companies = pd.read_csv(path_cv + 'movie_companies.csv', names=('id', 'movie_id', 'company_id', 'company_type_id', 'note'))
+keyword = pd.read_csv(path_cv + 'keyword.csv', names=('id', 'keyword', 'phonetic_code'))
+link_type = pd.read_csv(path_cv + 'link_type.csv', names=('id', 'link'))
+movie_keyword = pd.read_csv(path_cv + 'movie_keyword.csv', names=('id', 'movie_id', 'keyword_id'))
+movie_link = pd.read_csv(path_cv + 'movie_link.csv', names=('id', 'movie_id', 'linked_movie_id', 'link_type_id'))
+cast_info = pd.read_csv(path_cv + 'cast_info.csv', low_memory=False,
                  names=('id', 'person_id', 'movie_id', 'person_role_id', 'note', 'nr_order', 'role_id'))
-n = pd.read_csv(path_cv + 'name.csv', low_memory=False, names=(
+name = pd.read_csv(path_cv + 'name.csv', low_memory=False, names=(
     'id', 'name', 'imdb_index', 'imdb_id', 'gender', 'name_pcode_cf', 'name_pcode_nf', 'surname_pcode', 'md5sum'))
-an = pd.read_csv(path_cv + 'aka_name.csv', low_memory=False, names=(
+aka_name = pd.read_csv(path_cv + 'aka_name.csv', low_memory=False, names=(
     'id', 'person_id', 'name', 'imdb_index', 'name_pcode_cf', 'name_pcode_nf', 'surname_pcode', 'md5sum'))
-chn = pd.read_csv(path_cv + 'char_name.csv', low_memory=False,
+char_name = pd.read_csv(path_cv + 'char_name.csv', low_memory=False,
                   names=('id', 'name', 'imdb_index', 'imdb_id', 'name_pcode_nf', 'surname_pcode', 'md5sum'))
-rt = pd.read_csv(path_cv + 'role_type.csv', names=('id', 'role'))
+role_type = pd.read_csv(path_cv + 'role_type.csv', names=('id', 'role'))
+'''
 
 
-def refactor(query):
-    temp = str(db.query(query)).replace("\t", "|").splitlines()
-    names = temp[-6].split('|')
-    values = temp[-3].split('|')
-    try:
-        names.remove('')
-        values.remove('')
-    except:
-        pass
-    return [names, values]
+def my_implementation(query):
+    result = str(db.query(query)).replace("\t", "|").splitlines()[-3].split('|')
+    if result.__contains__(''):
+        result.remove('')
+    return result
 
 
-def benchmark_6a():
-    query = "SELECT MIN(k.keyword) AS movie_keyword, " \
+
+query = "SELECT MIN(k.keyword) AS movie_keyword, " \
             "MIN(n.name) AS actor_name, " \
             "MIN(t.title) As marvel_movie " \
             "FROM ci, k, mk, n, t " \
@@ -56,10 +52,10 @@ def benchmark_6a():
             "AND t.id = ci.movie_id " \
             "AND ci.movie_id = mk.movie_id " \
             "AND n.id = ci.person_id;"
-    return refactor(query)
 
-def benchmark_9a():
-    query = "SELECT MIN(an.name) AS alternative_name, MIN(chn.name) AS character_name, MIN(t.title) AS movie " \
+
+
+query_9a = "SELECT MIN(an.name) AS alternative_name, MIN(chn.name) AS character_name, MIN(t.title) AS movie " \
             "FROM an, chn, ci, cn, mc, n, rt, t " \
             "WHERE ci.note IN ('(voice)','(voice: Japanese version)','(voice) (uncredited)','(voice: English version)') " \
             "AND cn.country_code ='[us]' " \
@@ -78,11 +74,8 @@ def benchmark_9a():
             "AND chn.id = ci.person_role_id " \
             "AND an.person_id = n.id " \
             "AND an.person_id = ci.person_id; "
-    return refactor(query)
 
-
-def benchmark_25a():
-    query = "SELECT MIN(mi.info) AS movie_budget, " \
+query_25a = "SELECT MIN(mi.info) AS movie_budget, " \
             "MIN(mi_idx.info) AS movie_votes, " \
             "MIN(n.name) AS male_writer, " \
             "MIN(t.title) AS violent_movie_title " \
@@ -107,11 +100,8 @@ def benchmark_25a():
             "AND it1.id = mi.info_type_id " \
             "AND it2.id = mi_idx.info_type_id " \
             "AND k.id = mk.keyword_id;"
-    return refactor(query)
 
-
-def benchmark_21a():
-    query = "SELECT MIN(cn.name) AS company_name, " \
+query_21a = "SELECT MIN(cn.name) AS company_name, " \
             "MIN(lt.link) AS link_type, " \
             "MIN(t.title) AS wetsern_follow_up " \
             "FROM cn, ct, k, lt, mc, mi, mk, ml, t " \
@@ -137,14 +127,19 @@ def benchmark_21a():
             "AND ml.movie_id = mi.movie_id " \
             "AND mk.movie_id = mi.movie_id " \
             "AND mc.movie_id = mi.movie_id;"
-    return refactor(query)
 
 
-def benchmark_12c():
-    query = "SELECT MIN(cn.name) AS movie_company, " \
+query_12c = "SELECT MIN(cn.name) AS movie_company, " \
             "MIN(mi_idx.info) AS rating, " \
             "MIN(t.title) AS mainstream_movie " \
-            "FROM cn,ct, it1, it2, mc, mi, mi_idx, t " \
+            "FROM company_name AS cn," \
+            "company_type AS ct, " \
+            "info_type AS it1, " \
+            "info_type AS it2, " \
+            "movie_companies AS mc, " \
+            "movie_info AS mi, " \
+            "movie_info_idx AS mi_idx," \
+            "title AS t " \
             "WHERE cn.country_code = '[us]' " \
             "AND ct.kind = 'production companies' " \
             "AND it1.info = 'genres' " \
@@ -162,8 +157,21 @@ def benchmark_12c():
             "AND mc.movie_id = mi.movie_id " \
             "AND mc.movie_id = mi_idx.movie_id " \
             "AND mi.movie_id = mi_idx.movie_id;"
-    return refactor(query)
-
 
 if __name__ == '__main__':
-    print(benchmark_6a(), '\n', benchmark_9a(), '\n', benchmark_25a(), '\n', benchmark_21a(), '\n', benchmark_12c())
+    dir = '/home/dertuchi/PycharmProjects/dbi/queries/'
+    conn = psycopg2.connect(host="localhost", database="dbi", user="postgres", password="123")
+    cur = conn.cursor()
+
+    for file in os.listdir(dir):
+        fd = open(dir + file, 'r')
+        query = fd.read()
+        fd.close()
+
+        try:
+            my_result = my_implementation(query)
+            cur.execute(query)
+            psql_result = cur.fetchall()
+            print(f'my_result:\t{my_result}\t---\tpsql_result:{psql_result}')
+        except ValueError:
+            print(f'{file} could not execute')
