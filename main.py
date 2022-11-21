@@ -61,6 +61,7 @@ if __name__ == '__main__':
             # Apply query from sql file on psql db with the cursor
             cur.execute(query)
             psql_result = cur.fetchall()
-            print(f'Compare {file} query with csv-files and psql-db. Result: {csv_result.__eq__(psql_result)}')
+            print(f'Compare {file} query result with csv-files and psql-db. Check if they are equal. '
+                  f'Result: {csv_result.__eq__(psql_result)}')
         except ValueError:
             print(f'{file} could not execute')
