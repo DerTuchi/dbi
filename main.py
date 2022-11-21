@@ -3,8 +3,12 @@ import duckdb as db
 import psycopg2
 import os
 
+# Path to the csv files
 path_cv = "C:/Users/lenna/Desktop/csv/"
+# Path to the sql files. Here: 6a, 9a, 12c, 21a, 25a
+path_sql = 'D:/Code/Private Code/dbi/queries/'
 
+# Read csv files
 company_name = pd.read_csv(path_cv + 'company_name.csv',
                            names=('id', 'name', 'country_code', 'imdb_id', 'name_pcode_nf', 'name_pcode_sf', 'md5sum'))
 company_type = pd.read_csv(path_cv + 'company_type.csv', names=('id', 'kind'))
@@ -31,6 +35,8 @@ char_name = pd.read_csv(path_cv + 'char_name.csv', low_memory=False,
 role_type = pd.read_csv(path_cv + 'role_type.csv', names=('id', 'role'))
 
 
+# Takes a sql query and is able to search the files through the duckdb Package
+# and formats the result in a comparable Format
 def read_csv(query):
     result = str(db.query(query)).replace("\t", "|").splitlines()[-3].split('|')
     if result.__contains__(''):
@@ -39,19 +45,22 @@ def read_csv(query):
 
 
 if __name__ == '__main__':
-    dir = 'D:/Code/Private Code/dbi/queries/'
+    # Connect to psql db
     conn = psycopg2.connect(host="localhost", database="dbi", user="postgres", password="123")
     cur = conn.cursor()
 
-    for file in os.listdir(dir):
-        fd = open(dir + file, 'r')
+    for file in os.listdir(path_sql):
+        # Open sql file and read content of it
+        fd = open(path_sql + file, 'r')
         query = fd.read()
         fd.close()
 
         try:
-            my_result = read_csv(query)
+            # Apply query from sql file on csv files with 'read_csv' function
+            csv_result = read_csv(query)
+            # Apply query from sql file on psql db with the cursor
             cur.execute(query)
             psql_result = cur.fetchall()
-            print(f'Compare {file} query with local and db. Result: {my_result.__eq__(psql_result)}')
+            print(f'Compare {file} query with csv-files and psql-db. Result: {csv_result.__eq__(psql_result)}')
         except ValueError:
             print(f'{file} could not execute')
