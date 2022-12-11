@@ -1,6 +1,10 @@
+import math
 import random
+from datetime import datetime
+import numpy
 
 
+#---------------------------------------- Exersice 1 -----------------------------------------
 def bit_length(value):
     if value >= 0:
         return len("{0:b}".format(value))
@@ -58,3 +62,100 @@ def test(value_list):
 values = [1, 3, 7, 12, 13, 13, 14, 17]
 shuffled_values = random.sample(values, len(values))
 test(values)
+
+#---------------------------------------- Exersice 2 -----------------------------------------
+
+class CacheEntry:
+    def __init__(self, key, value):
+        self.__key = key
+        self.__value = value
+
+    def __eq__(self, other):
+        return self.__key == other.__key
+
+    def __str__(self):
+        return f'({self.__key}: {self.__value})'
+
+    @property
+    def key(self):
+        return self.__key
+
+    @property
+    def value(self):
+        return self.__value
+
+# Used to Save Time information
+class TimeBuffer:
+    def __init__(self, k):
+        self.__buffer = {}
+        self.__k = k
+
+    def put(self, key):
+        if not self.__buffer.__contains__(key):
+            temp = []
+            for i in range(self.__k):
+                temp.append(numpy.inf)
+            self.__buffer [key] = temp
+
+        temp = self.__buffer.get(key) [1:]
+        now = datetime.now()
+        temp.append(int(now.strftime("%Y%m%d%H%M%S")))
+        self.__buffer [key] = temp
+
+    def get(self):
+        return self.__buffer
+
+class LRUK:
+    def __init__(self, capacity, k):
+        self.__data = []
+        self.__buffer = TimeBuffer(k)
+        self.__capacity = capacity
+        self.__element_count = 0
+
+    def __str__(self):
+        return f"[{', '.join(([str(entry) for entry in self.__data]))}"
+
+    def put(self, key, value):
+        if self.__element_count < self.__capacity:
+            cache_entry = CacheEntry(key, value)
+            self.__data.append(cache_entry)
+            self.__buffer.put(key)
+            self.__element_count += 1
+        else:
+            buffer = self.__buffer.get()
+            loser = None
+            for i in buffer.keys():
+                if loser is None:
+                    loser = i
+                else:
+                    temp0 = buffer.get(loser)
+                    temp1 = buffer.get(i)
+                    delta_temp0 = temp0[-1] - temp0[0]
+                    delta_temp1 = temp1[-1] - temp1[0]
+                    if not math.isinf(temp0[0]) and (math.isinf(temp1[0]) or delta_temp0 < delta_temp1):
+                        loser = i
+            for temp in self.__data:
+                if temp.key == loser:
+                    self.__data.pop(self.__data.index(temp))
+            self.__data.append(CacheEntry(key, value))
+
+    def get(self, key):
+        for idx in range(self.__element_count):
+            if self.__data[idx].key == key:
+                #Added Key to the TimeBuffer
+                self.__buffer.put(key)
+
+                self.__data.append(self.__data.pop(idx))
+                return self.__data[-1]
+        return None
+
+
+cache_capacity = 8
+cache = LRUK(cache_capacity, 2)
+for i in range(cache_capacity):
+    cache.put(i, i+1)
+str(cache)
+cache.put(cache_capacity, cache_capacity + 1)
+str(cache)
+str(cache.get(0))
+str(cache)
