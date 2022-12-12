@@ -1,8 +1,10 @@
 import math
+import os
 import random
 from datetime import datetime
 import numpy
-from enum import Enum
+import psycopg2
+from time import time
 
 #---------------------------------------- Exersice 1 -----------------------------------------
 def bit_length(value):
@@ -160,14 +162,43 @@ class Cache:
                 return self.__data[-1]
         return None
 
-
-
 cache_capacity = 8
 cache = Cache(cache_capacity, "FIFO")
 for i in range(cache_capacity):
     cache.put(i, i+1)
-str(cache)
+print(str(cache))
 cache.put(cache_capacity, cache_capacity + 1)
-str(cache)
-str(cache.get(1))
-str(cache)
+print(str(cache))
+print(str(cache.get(1)))
+print(str(cache))
+
+#---------------------------------------- Exersice 3 -----------------------------------------
+path_sql = 'D:/Code/Private Code/dbi/Exercise 1/queries/'
+
+
+# Connect to psql db
+conn = psycopg2.connect(host="localhost", database="dbi", user="postgres", password="123")
+cur = conn.cursor()
+
+conn_1 = psycopg2.connect(host="localhost", database="dbi_compressed", user="postgres", password="123")
+cur_compressed = conn_1.cursor()
+
+for file in os.listdir(path_sql):
+    # Open sql file and read content of it
+    fd = open(path_sql + file, 'r')
+    query = fd.read()
+    fd.close()
+
+    try:
+        # Apply query from sql file on psql db with the cursor
+        start_time = time()
+        cur.execute(query)
+        end_time = time()
+        print(f'Execution time - {file}: {end_time - start_time} Seconds.')
+
+        start_time = time()
+        cur_compressed.execute(query)
+        end_time = time()
+        print(f'Execution time Compressed - {file}: {end_time - start_time} Seconds.\n')
+    except ValueError:
+        print(f'{file} could not execute')

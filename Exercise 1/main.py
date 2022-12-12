@@ -6,7 +6,7 @@ import os
 # Path to the csv files
 path_cv = "C:/Users/lenna/Desktop/csv/"
 # Path to the sql files. Here: 6a, 9a, 12c, 21a, 25a
-path_sql = '/Exercise 1/queries/'
+path_sql = 'D:/Code/Private Code/dbi/Exercise 1/queries/'
 
 # Read csv files
 company_name = pd.read_csv(path_cv + 'company_name.csv',
