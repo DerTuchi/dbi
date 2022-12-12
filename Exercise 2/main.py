@@ -2,7 +2,7 @@ import math
 import random
 from datetime import datetime
 import numpy
-
+from enum import Enum
 
 #---------------------------------------- Exersice 1 -----------------------------------------
 def bit_length(value):
@@ -105,10 +105,14 @@ class TimeBuffer:
     def get(self):
         return self.__buffer
 
-class LRUK:
-    def __init__(self, capacity, k):
+class Cache:
+    def __init__(self, capacity, alg_type, k=1):
+        if not alg_type in ["LRUK", "LIFO", "FIFO"]:
+            raise ValueError ("Parameter alg_type only allows: 'LRUK', 'LIFO', 'FIFO' as Values")
         self.__data = []
-        self.__buffer = TimeBuffer(k)
+        self.alg_type = alg_type
+        if alg_type == "LRUK":
+            self.__buffer = TimeBuffer(k)
         self.__capacity = capacity
         self.__element_count = 0
 
@@ -119,43 +123,51 @@ class LRUK:
         if self.__element_count < self.__capacity:
             cache_entry = CacheEntry(key, value)
             self.__data.append(cache_entry)
-            self.__buffer.put(key)
+            if self.alg_type == "LRUK":
+                self.__buffer.put(key)
             self.__element_count += 1
         else:
-            buffer = self.__buffer.get()
-            loser = None
-            for i in buffer.keys():
-                if loser is None:
-                    loser = i
-                else:
-                    temp0 = buffer.get(loser)
-                    temp1 = buffer.get(i)
-                    delta_temp0 = temp0[-1] - temp0[0]
-                    delta_temp1 = temp1[-1] - temp1[0]
-                    if not math.isinf(temp0[0]) and (math.isinf(temp1[0]) or delta_temp0 < delta_temp1):
+            if self.alg_type == "LRUK":
+                buffer = self.__buffer.get()
+                loser = None
+                for i in buffer.keys():
+                    if loser is None:
                         loser = i
-            for temp in self.__data:
-                if temp.key == loser:
-                    self.__data.pop(self.__data.index(temp))
+                    else:
+                        temp0 = buffer.get(loser)
+                        temp1 = buffer.get(i)
+                        delta_temp0 = temp0[-1] - temp0[0]
+                        delta_temp1 = temp1[-1] - temp1[0]
+                        if not math.isinf(temp0[0]) and (math.isinf(temp1[0]) or delta_temp0 < delta_temp1):
+                            loser = i
+                for temp in self.__data:
+                    if temp.key == loser:
+                        self.__data.pop(self.__data.index(temp))
+            elif self.alg_type == "LIFO":
+                self.__data.pop(-1)
+            elif self.alg_type == "FIFO":
+                self.__data.pop(0)
             self.__data.append(CacheEntry(key, value))
 
     def get(self, key):
         for idx in range(self.__element_count):
             if self.__data[idx].key == key:
                 #Added Key to the TimeBuffer
-                self.__buffer.put(key)
+                if self.alg_type == "LRUK":
+                    self.__buffer.put(key)
 
                 self.__data.append(self.__data.pop(idx))
                 return self.__data[-1]
         return None
 
 
+
 cache_capacity = 8
-cache = LRUK(cache_capacity, 2)
+cache = Cache(cache_capacity, "FIFO")
 for i in range(cache_capacity):
     cache.put(i, i+1)
 str(cache)
 cache.put(cache_capacity, cache_capacity + 1)
 str(cache)
-str(cache.get(0))
+str(cache.get(1))
 str(cache)
