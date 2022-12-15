@@ -7,27 +7,30 @@ import psycopg2
 from time import time
 
 #---------------------------------------- Exersice 1 -----------------------------------------
-def bit_length(value):
-    if value >= 0:
-        return len("{0:b}".format(value))
-    else:
-        return 32
-
 
 def count_bits(value_list):
+    def bit_length(value):
+        if value >= 0:
+            return len("{0:b}".format(value))
+        else:
+            return 32
     return sum(bit_length(value) for value in value_list)
 
 
 def for_encoding(value_list, frame_size):
     result = []
-    # First Delta Encoding
-    delta = delta_encoding(value_list)
-    # Second Split into Chunks with Frame_size
-    chunks = [delta[x: x + frame_size] for x in range(0, len(delta), frame_size)]
+    # Split into Chunks with Frame_size
+    chunks = [value_list[x: x + frame_size] for x in range(0, len(value_list), frame_size)]
     for chunk in chunks:
-        # Third Bit packing
-        length = max(bit_length(temp) for temp in chunk)
-        chunk.insert(0, length)
+        # find FOR-Element with min
+        ref = min(chunk)
+        # Subtract
+        for temp in range(len(chunk)):
+            if temp.__eq__(chunk.index(ref)):
+                pass
+            else:
+                chunk[temp] = chunk[temp] - ref
+        # Put chunks together
         result.extend(chunk)
     return result
 
@@ -46,10 +49,13 @@ def delta_encoding(value_list):
 def dictionary_encoding(value_list):
     result = []
     result.extend(value_list)
-    codes = {}
+    dictionary = {}
+    counter = 0
     for i in range(len(result)):
-        codes.update({result[i]: i})
-        result[i] = i
+        if not result[i] in dictionary.keys():
+            dictionary.update({result[i]: counter})
+            counter += 1
+        result[i] = dictionary.get(result[i])
     return result
 
 
@@ -58,7 +64,7 @@ def test(value_list):
           f'\tSource\t\t\t\t: {count_bits(value_list)}\n'
           f'\tFOR (Frame-Size=2)\t: {count_bits(for_encoding(value_list, 2))}\n'
           f'\tDELTA\t\t\t\t: {count_bits(delta_encoding(value_list))}\n'
-          f'\tDICT\t\t\t\t: {count_bits(dictionary_encoding(value_list))}')
+          f'\tDICT\t\t\t\t: {count_bits(dictionary_encoding(value_list))}\n')
 
 
 values = [1, 3, 7, 12, 13, 13, 14, 17]
@@ -166,11 +172,11 @@ cache_capacity = 8
 cache = Cache(cache_capacity, "FIFO")
 for i in range(cache_capacity):
     cache.put(i, i+1)
-print(str(cache))
+str(cache)
 cache.put(cache_capacity, cache_capacity + 1)
-print(str(cache))
-print(str(cache.get(1)))
-print(str(cache))
+str(cache)
+str(cache.get(1))
+str(cache)
 
 #---------------------------------------- Exersice 3 -----------------------------------------
 path_sql = 'D:/Code/Private Code/dbi/Exercise 1/queries/'
