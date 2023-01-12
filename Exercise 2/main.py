@@ -66,7 +66,7 @@ def test(value_list):
           f'\tDELTA\t\t\t\t: {count_bits(delta_encoding(value_list))}\n'
           f'\tDICT\t\t\t\t: {count_bits(dictionary_encoding(value_list))}\n')
 
-
+print('---------------------------------------- Exersice 1 -----------------------------------------\n')
 values = [1, 3, 7, 12, 13, 13, 14, 17]
 shuffled_values = random.sample(values, len(values))
 test(values)
@@ -168,15 +168,16 @@ class Cache:
                 return self.__data[-1]
         return None
 
+print('---------------------------------------- Exersice 2 -----------------------------------------\n')
 cache_capacity = 8
 cache = Cache(cache_capacity, "FIFO")
 for i in range(cache_capacity):
     cache.put(i, i+1)
-str(cache)
+print(str(cache))
 cache.put(cache_capacity, cache_capacity + 1)
-str(cache)
-str(cache.get(1))
-str(cache)
+print(str(cache))
+print(str(cache.get(1)))
+print(str(cache))
 
 #---------------------------------------- Exersice 3 -----------------------------------------
 path_sql = 'D:/Code/Private Code/dbi/Exercise 1/queries/'
