@@ -181,7 +181,7 @@ print(str(cache))
 
 #---------------------------------------- Exersice 3 -----------------------------------------
 path_sql = 'D:/Code/Private Code/dbi/Exercise 1/queries/'
-
+print('---------------------------------------- Exersice 3 -----------------------------------------\n')
 
 # Connect to psql db
 conn = psycopg2.connect(host="localhost", database="dbi", user="postgres", password="123")
@@ -195,7 +195,6 @@ for file in os.listdir(path_sql):
     fd = open(path_sql + file, 'r')
     query = fd.read()
     fd.close()
-
     try:
         # Apply query from sql file on psql db with the cursor
         start_time = time()
