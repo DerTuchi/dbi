@@ -2,7 +2,7 @@
 #include <vector>
 using namespace std;
 
-const int order = 4;
+int order = 6;
 
 
 // BP node
@@ -21,12 +21,12 @@ class Node {
     };
 
 
-    void printNodeEntry(){
-        cout<<"Keys:\t\t| ";
+    void printNode(){
+        cout<<"| ";
         for (int i=0; i < size; i++){
             cout<< key[i] <<" | ";
         }
-        cout<<"\n\n";
+        cout<<"\t\t";
     }
 };
 
@@ -39,11 +39,11 @@ class BPTree {
         root = nullptr;
     }
 
-    void insert(int value){
+    void insertKey(int key){
         //  erstmaliges erstellen von Root;
         if (root == nullptr){
             root = new Node;
-            root->key[0] = value;
+            root->key[0] = key;
             root->size = 1;
             root->leaf = true;
         }
@@ -53,7 +53,7 @@ class BPTree {
             while (!(cursor->leaf)){
                 parent = cursor;
                 for (int i = 0; i < cursor->size; i++){
-                    if (value < cursor->key[i]){
+                    if (key < cursor->key[i]){
                         cursor = cursor->ptr[i];
                         break;
                     }
@@ -67,16 +67,16 @@ class BPTree {
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
             if (cursor->size < order){
                 int i = 0;
-                while(i < cursor->size && cursor->key[i] < value){i++;}
+                while(i < cursor->size && cursor->key[i] < key){i++;}
                 for (int j = cursor->size; j > i; j--){
                     cursor->key[j] = cursor->key[j-1];
                 }
-                cursor->key[i] = value;
+                cursor->key[i] = key;
                 cursor->size++;
                 cursor->ptr[cursor->size] = cursor->ptr[cursor->size -1];
                 cursor->ptr[cursor->size -1] = nullptr;
             }
-            /*  Falls das Leaf voll ist, wird trotzdem an der richtigen stelle das die value eingefügt und danach dieser
+            /*  Falls das Leaf voll ist, wird trotzdem an der richtigen stelle das die key eingefügt und danach dieser
              *  Knoten geteilt. Diese beiden Leafs kriegen jetzt einen Elternknoten.
              *  Falls der geteilte Blattknoten gleichzeitig auch der Wurzelknoten war, wird ein neuer Wurzelknoten
              *  erstellt. Dieser hat dann die getrennten Blattknoten als Kinder.
@@ -89,13 +89,13 @@ class BPTree {
                     tempNode[i] = cursor->key[i];
                 }
                 int i = 0, j;
-                while (i < order && tempNode[i] < value){
+                while (i < order && tempNode[i] < key){
                     i++;
                 }
                 for(j = order+1; j > i; j--){
                     tempNode[j] = tempNode[j-1];
                 }
-                tempNode[i] = value;
+                tempNode[i] = key;
                 newLeaf->leaf = true;
                 cursor->size = (order+1)/2;
                 newLeaf->size = order+1-(order+1)/2;
@@ -124,16 +124,16 @@ class BPTree {
         }
     }
 
-    void insertIntoNode(int value, Node *cursor, Node *child){
-        /*  Das Ziel der Funktion ist es in den Parent (hier cursor) das mittlere Element von vorher (hier value)
+    void insertIntoNode(int key, Node *cursor, Node *child){
+        /*  Das Ziel der Funktion ist es in den Parent (hier cursor) das mittlere Element von vorher (hier key)
          *  zu integrieren und das Kind (hier child) mit dem Parent zu verbinden.
          * */
-        /*  Wenn der Elternknoten noch Platz hat, wird an der passenden stelle die value eingefügt. Das selbe gilt für
+        /*  Wenn der Elternknoten noch Platz hat, wird an der passenden stelle die key eingefügt. Das selbe gilt für
          *  die Kinderpointer.
          * */
         if (cursor->size < order) {
             int i = 0;
-            while (value > cursor->key[i] && i < cursor->size)
+            while (key > cursor->key[i] && i < cursor->size)
                 i++;
             for (int j = cursor->size; j > i; j--) {
                 cursor->key[j] = cursor->key[j - 1];
@@ -141,11 +141,11 @@ class BPTree {
             for (int j = cursor->size + 1; j > i + 1; j--) {
                 cursor->ptr[j] = cursor->ptr[j - 1];
             }
-            cursor->key[i] = value;
+            cursor->key[i] = key;
             cursor->size++;
             cursor->ptr[i + 1] = child;
         }
-        /*  Ähnlich zur insert funktion wird andernfalls ein Temporäres Node element erstellt, welches den value mit dem child
+        /*  Ähnlich zur insertKey funktion wird andernfalls ein Temporäres Node element erstellt, welches den key mit dem child
          *  an der richtigen stelle einfügt und danach getrennt wird. Sonst verhält sich der Alg. gleich.
          *  Falls ein Parent element übergeben wurde, welches nicht Root ist, wird diese Funktion rekursiv aufgerufen,
          *  um dieses Parent richtig zuzuweisen.
@@ -162,12 +162,12 @@ class BPTree {
                 virtualPtr[i] = cursor->ptr[i];
             }
             int i = 0, j;
-            while (value > virtualKey[i] && i < order)
+            while (key > virtualKey[i] && i < order)
                 i++;
             for (int j = order + 1; j > i; j--) {
                 virtualKey[j] = virtualKey[j - 1];
             }
-            virtualKey[i] = value;
+            virtualKey[i] = key;
             for (int j = order + 2; j > i + 1; j--) {
                 virtualPtr[j] = virtualPtr[j - 1];
             }
@@ -213,25 +213,37 @@ class BPTree {
         return parent;
     }
 
-    void printTree(Node *node, int depth=0){
+    void nodesPerDepth(Node * node, int depthCurrent, int depth){
+            if(depthCurrent != depth) {
+                for (int i = 0; i < node->size+1;i++){
+                    nodesPerDepth(node->ptr[i], depthCurrent + 1, depth);
+                }
+            } else{
+                node->printNode();
+                return;
+            }
+
+    }
+
+    void printTree(){
         if(root== nullptr){
             cout<<"Tree is Empty\n";
         }
-        if (node != nullptr){
-            cout<<"| ";
-            for (int i=0; i < node->size; i++){
-                cout<< node->key[i] << " | ";
-            }
-            cout<<"\n\n";
-            if (!(node->leaf)){
-                for (int i = 0; i < node->size + 1; i++){
-                    printTree(node->ptr[i], depth+1);
-                }
-            }
+        int maxDepth = 0, currentDepth = 0;
+        Node *cursor = root;
+        while(!cursor->leaf){
+            cursor = cursor->ptr[0];
+            maxDepth ++;
         }
+        while(currentDepth <= maxDepth){
+            nodesPerDepth(root, 0, currentDepth);
+                cout<<"\n\n";
+                currentDepth ++;
+        }
+        cout<<"--------------------------------------------------------------------------------------\n";
     }
 
-    void searchTree(int value){
+    Node *searchTree(int key){
         if (root == nullptr){
             cout<<"Tree is empty";
         }
@@ -239,7 +251,7 @@ class BPTree {
             Node *cursor = root;
             while (!cursor->leaf){
                 for (int i = 0; i < cursor->size; i++){
-                    if (value < cursor->key[i]){
+                    if (key < cursor->key[i]){
                         cursor = cursor->ptr[i];
                         break;
                     }
@@ -250,13 +262,103 @@ class BPTree {
                 }
             }
             for (int i = 0; i < cursor->size; i ++){
-                if (cursor->key[i] == value){
-                    cout<<"Key found!\n";
-                    return;
+                if (cursor->key[i] == key){
+                    //cout<<"Key found!\n";
+                    return cursor;
                 }
             }
-            cout<<"Key not found!\n";
+            //cout<<"Key not found!\n";
+            return nullptr;
         }
+    }
+
+    void deleteKey(int key){
+        Node *cursor = searchTree(key);
+        Node *parent;
+        int leftSibling = 0, rightSibling = 0;
+        if (cursor == nullptr){
+            cout<<key<<" not in Tree";
+            return;
+        }
+        cursor = root;
+        bool condition = true;
+        while (condition){
+            parent = cursor;
+            for (int i = 0; i < cursor->size; i++){
+                if (key < cursor->key[i]){
+                    cursor = cursor->ptr[i];
+                    leftSibling = i-1;
+                    rightSibling = i+1;
+                    break;
+                }
+                if (i == cursor->size-1){
+                    cursor = cursor->ptr[i + 1];
+                    leftSibling = i;
+                    rightSibling = i +2;
+                    break;
+                }
+            }
+            if(cursor != nullptr){
+                for (int i = 0; i < cursor->size; i++){
+                    if (cursor->key[i] == key){
+                        condition = false;
+                    }
+                }
+            }
+        }
+        if(cursor->leaf){
+            // Wenn die Min-Größe, der Nodes eingehalten wird und der Key nur im Leaf vorhanden ist, kann man den einfach entfernen
+            int i=0;
+            while(true){
+                if(cursor->key[i] == key){
+                    break;
+                }
+                i++;
+            }
+            for (int j = i; j < cursor->size; j++){
+                cursor->key[j] = cursor->key[j+1];
+            }
+            if(cursor->size < order/2){
+                cursor->size --;
+            }
+            // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
+            else{
+                deleteKeyHelp(parent, cursor, rightSibling, leftSibling);
+            }
+        }
+    }
+
+    void deleteKeyHelp(Node* parent, Node* child, int rightSibling, int leftSibling){
+        Node * cursor = child;
+        if (leftSibling == -1){
+            cursor->key[cursor->size] = parent->ptr[rightSibling]->key[0];
+            for (int j = 0; j < parent->size; j ++){
+                if(parent->key[j] == parent->ptr[rightSibling]->key[0]){
+                    parent->key[j] = parent->ptr[rightSibling]->key[1];
+                }
+            }
+            for (int j = 0; j < parent->ptr[rightSibling]->size; j ++) {
+                parent->ptr[rightSibling]->key[j] = parent->ptr[rightSibling]->key[j + 1];
+            }
+            parent->ptr[rightSibling]->size --;
+            if(parent->ptr[rightSibling]->size <= order/2 && parent->size > rightSibling){
+                parent->ptr[rightSibling]->size ++;
+                deleteKeyHelp(parent, cursor, rightSibling + 1, -1);
+            }
+            else{
+                deleteKeyHelp(parent, cursor, rightSibling + 1, rightSibling);
+            }
+
+        }
+        else if(rightSibling > parent->size){
+            for (int i = 0; i < cursor->size; i ++){
+                parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size+i] = cursor->key[i];
+            }
+            parent->ptr[parent->size+1] = nullptr;
+            parent->size --;
+        }
+        //Wenn es Root ist nochmal anders handlen und auf andere Parents beziehen!!!
+
     }
 
     //... contains(...);
@@ -280,14 +382,16 @@ class BPTree {
 
 int main(void) {
     BPTree tree;
-    tree.insert(0);
-    tree.insert(1);
-    tree.insert(2);
-    tree.insert(3);
-    tree.insert(4);
-    tree.insert(5);
-    tree.insert(6);
-    tree.printTree(tree.root);
-    tree.searchTree(5);
+    int keys = 13;
+    for (int i = 1; i <= keys; i ++){
+        tree.insertKey(i);
+    }
+    tree.printTree();
+    tree.deleteKey(2);
+    tree.printTree();
+    tree.insertKey(2);
+    tree.printTree();
+    tree.insertKey(3);
+    tree.printTree();
     return 0;
 }
