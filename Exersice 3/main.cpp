@@ -2,7 +2,7 @@
 #include <vector>
 using namespace std;
 
-int order = 6;
+int order = 3;
 
 
 // BP node
@@ -273,15 +273,24 @@ class BPTree {
     }
 
     void deleteKey(int key){
+        int threshhold = ((order/2) + 0.5) - 1;
+        if(threshhold <= 0){
+            threshhold = 1;
+        }
         Node *cursor = searchTree(key);
         Node *parent;
+        bool condition = true;
         int leftSibling = 0, rightSibling = 0;
         if (cursor == nullptr){
             cout<<key<<" not in Tree";
             return;
         }
         cursor = root;
-        bool condition = true;
+        for(int i = 0; i < cursor->size; i ++){
+            if (cursor->key[i]==key){
+                condition = false;
+            }
+        }
         while (condition){
             parent = cursor;
             for (int i = 0; i < cursor->size; i++){
@@ -298,11 +307,9 @@ class BPTree {
                     break;
                 }
             }
-            if(cursor != nullptr){
-                for (int i = 0; i < cursor->size; i++){
-                    if (cursor->key[i] == key){
-                        condition = false;
-                    }
+            for (int i = 0; i < cursor->size; i++){
+                if (cursor->key[i] == key){
+                    condition = false;
                 }
             }
         }
@@ -315,23 +322,155 @@ class BPTree {
                 }
                 i++;
             }
-            for (int j = i; j < cursor->size; j++){
+            for (int j = i; j < cursor->size -1; j++){
                 cursor->key[j] = cursor->key[j+1];
             }
-            if(cursor->size < order/2){
-                cursor->size --;
-            }
+            cursor->size --;
             // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
-            else{
+            if (cursor->size < threshhold){
                 deleteKeyHelp(parent, cursor, rightSibling, leftSibling);
+            }
+        }
+        else{
+            int parentKeyLocation=0;
+            while(true){
+                if(cursor->key[parentKeyLocation] == key){
+                    break;
+                }
+                parentKeyLocation++;
+            }
+            parent = cursor;
+            for (int j = 0; j < cursor->size; j++){
+                if (key < cursor->key[j]){
+                    cursor = cursor->ptr[j];
+                    leftSibling = j-1;
+                    rightSibling = j+1;
+                    break;
+                }
+                if (j == cursor->size - 1){
+                    cursor = cursor->ptr[j + 1];
+                    leftSibling = j;
+                    rightSibling = j+2;
+                    break;
+                }
+            }
+            bool parentFollowsLeaf = false;
+            for (int j = 0; j < cursor->size; j ++) {
+                if (cursor->key[j] == key) {
+                    parentFollowsLeaf = true;
+                }
+            }
+            if (parentFollowsLeaf){
+                int cursorKeyLocation = 0;
+                while(true){
+                    if(cursor->key[cursorKeyLocation] == key){
+                        break;
+                    }
+                    cursorKeyLocation ++;
+                }
+                for (int j = cursorKeyLocation; j < cursor->size - 1; j ++){
+                    cursor->key[j] = cursor->key[j+1];
+                }
+                if (cursor->size > threshhold){
+                    cursor->size --;
+                    parent->key[parentKeyLocation] = cursor->key[0];
+                }
+                else if (cursor->size == threshhold){
+                    int nodeTemp [order];
+                    nodeTemp[0] = parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1];
+                    for (int j = 1; j < cursor->size; j++){
+                        nodeTemp[j] = cursor->key[j];
+                    }
+                    for (int j =0; j < cursor->size + 1; j++){
+                        cursor->key[j] = nodeTemp[j];
+                    }
+                    parent->key[parentKeyLocation] = nodeTemp[0];
+                    parent->ptr[leftSibling]->size --;
+                }
+            }
+            else {
+                //Parent: Rechtes Node das kleinste nehmen, suxesiv; und das zu löschende element ersetzten durch eins weiter rechts
+                Node * temp = cursor;
+                condition = true;
+                while (condition){
+                    temp = cursor;
+                    for (int i = 0; i < cursor->size; i++){
+                        if (key < cursor->key[i]){
+                            cursor = cursor->ptr[i];
+                            leftSibling = i-1;
+                            rightSibling = i+1;
+                            break;
+                        }
+                        if (i == cursor->size-1){
+                            cursor = cursor->ptr[i + 1];
+                            leftSibling = i;
+                            rightSibling = i +2;
+                            break;
+                        }
+                    }
+                    for (int i = 0; i < cursor->size; i++){
+                        if (cursor->key[i] == key){
+                            condition = false;
+                        }
+                    }
+                }
+                //Löschen in leaf und aufrücken der anderen Nodes
+                int leafKeyLocation = 0;
+                for(leafKeyLocation; leafKeyLocation < cursor->size; leafKeyLocation++){
+                    if(cursor->key[leafKeyLocation] == key){
+                        break;
+                    }
+                }
+                for(int i = leafKeyLocation; i < cursor->size-1; i++){
+                    cursor->key[i] = cursor->key[i+1];
+                }
+                cursor->size --;
+                //Leafs zusammen fügen
+                if (cursor->size < threshhold){
+                    int newSize = temp->ptr[0]->size + temp->ptr[1]->size;
+                    int tempValues [newSize];
+                    int tempValuesCount = 0;
+                    for(tempValuesCount; tempValuesCount < temp->ptr[0]->size;tempValuesCount++){
+                        tempValues[tempValuesCount] = temp->ptr[0]->key[tempValuesCount];
+                    }
+                    for(int i = 0; i < temp->ptr[1]->size; i++){
+                        tempValues[i + tempValuesCount] = temp->ptr[1]->key[i];
+                    }
+                    for(int i = 0; i < newSize;i++){
+                        cursor->key[i] = tempValues[i];
+                    }
+                    cursor->size = newSize;
+                    for(int i = 1; i < temp->size+1;i++){
+                        if (i == temp->size){
+                            temp->ptr[i] = nullptr;
+                            break;
+                        }
+                        else{
+                            temp->ptr[i]->size = temp->ptr[i+1]->size;
+                        }
+                        for(int j = 0; j < temp->ptr[i]->size;j++){
+                            temp->ptr[i]->key[j] = temp->ptr[i+1]->key[j];
+                        }
+                    }
+                }
+                //Im parent den neuen Wert ändern
+                parent->key[parentKeyLocation] = temp->key[0];
+                for(int i = 0; i < temp->size-1; i++){
+                    temp->key[i] = temp->key[i+1];
+                }
+                temp->size --;
             }
         }
     }
 
     void deleteKeyHelp(Node* parent, Node* child, int rightSibling, int leftSibling){
         Node * cursor = child;
+        //cout<<"Delete without Recalibration: \n";
+        //cout<<"Parent: "; parent->printNode(); cout << " Child: "; cursor->printNode(); cout<<" Siblings(L,R): "<< leftSibling <<", "<< rightSibling<<"\n\n";
+        this->printTree();
         if (leftSibling == -1){
             cursor->key[cursor->size] = parent->ptr[rightSibling]->key[0];
+            cursor->size ++;
             for (int j = 0; j < parent->size; j ++){
                 if(parent->key[j] == parent->ptr[rightSibling]->key[0]){
                     parent->key[j] = parent->ptr[rightSibling]->key[1];
@@ -341,8 +480,11 @@ class BPTree {
                 parent->ptr[rightSibling]->key[j] = parent->ptr[rightSibling]->key[j + 1];
             }
             parent->ptr[rightSibling]->size --;
-            if(parent->ptr[rightSibling]->size <= order/2 && parent->size > rightSibling){
-                parent->ptr[rightSibling]->size ++;
+            int threshhold = ((order/2) + 0.5) - 1;
+            if(threshhold <= 0){
+                threshhold = 1;
+            }
+            if(parent->ptr[rightSibling]->size < threshhold && parent->size > rightSibling){
                 deleteKeyHelp(parent, cursor, rightSibling + 1, -1);
             }
             else{
@@ -362,23 +504,7 @@ class BPTree {
     }
 
     //... contains(...);
-    //... delete(....);
 };
-
-// Insert Operation
-//... BPTree::insert_key(...){}
-
-// Search operation
-//... BPTree::search(...){}
-
-// Does the tree contain a certain node
-//... BPTree::contains(...){}
-
-// Delete a node
-//... BPTree::search(...){}
-
-// Print the tree
-//... printTree(tree) {}
 
 int main(void) {
     BPTree tree;
@@ -387,11 +513,7 @@ int main(void) {
         tree.insertKey(i);
     }
     tree.printTree();
-    tree.deleteKey(2);
-    tree.printTree();
-    tree.insertKey(2);
-    tree.printTree();
-    tree.insertKey(3);
+    tree.deleteKey(7);
     tree.printTree();
     return 0;
 }
