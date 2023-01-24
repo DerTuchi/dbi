@@ -2,7 +2,7 @@
 #include <vector>
 using namespace std;
 
-int order = 3;
+int order = 2;
 
 
 // BP node
@@ -356,7 +356,7 @@ class BPTree {
             }
             bool parentFollowsLeaf = false;
             for (int j = 0; j < cursor->size; j ++) {
-                if (cursor->key[j] == key) {
+                if (cursor->leaf && cursor->key[j] == key) {
                     parentFollowsLeaf = true;
                 }
             }
@@ -389,7 +389,6 @@ class BPTree {
                 }
             }
             else {
-                //Parent: Rechtes Node das kleinste nehmen, suxesiv; und das zu löschende element ersetzten durch eins weiter rechts
                 Node * temp = cursor;
                 condition = true;
                 while (condition){
@@ -426,7 +425,6 @@ class BPTree {
                 }
                 cursor->size --;
                 //Leafs zusammen fügen
-                if (cursor->size < threshhold){
                     int newSize = temp->ptr[0]->size + temp->ptr[1]->size;
                     int tempValues [newSize];
                     int tempValuesCount = 0;
@@ -452,15 +450,40 @@ class BPTree {
                             temp->ptr[i]->key[j] = temp->ptr[i+1]->key[j];
                         }
                     }
-                }
                 //Im parent den neuen Wert ändern
                 parent->key[parentKeyLocation] = temp->key[0];
                 for(int i = 0; i < temp->size-1; i++){
                     temp->key[i] = temp->key[i+1];
                 }
                 temp->size --;
+                cursor = temp;
+            }
+            cout<<"Parent:";
+            parent->printNode();
+            cout<<"\nCursor:";
+            cursor->printNode();
+            cout<<"\n";
+            leftSibling = parent->size - 1;
+            rightSibling = parent->size;
+            if (cursor->size < threshhold && parent->ptr[rightSibling]->size < threshhold){
+                for (int i = 0; i < root->size; i ++){
+                    if (root->key[i] == key){
+                        Node *temp = parent->ptr[leftSibling];
+                        temp->key[temp->size] = cursor->ptr[0]->key[0];
+                        temp->size++;
+                        temp->ptr[temp->size + 1] = cursor->ptr[0];
+                        root = temp;
+                        return;
+                    }
+                }
+                Node *temp = parent->ptr[leftSibling];
+                temp->key[temp->size] = parent->key[parent->size];
+                temp->size++;
+                temp->ptr[temp->size + 1] = cursor->ptr[0];
+                root = temp;
             }
         }
+
     }
 
     void deleteKeyHelp(Node* parent, Node* child, int rightSibling, int leftSibling){
@@ -499,8 +522,6 @@ class BPTree {
             parent->ptr[parent->size+1] = nullptr;
             parent->size --;
         }
-        //Wenn es Root ist nochmal anders handlen und auf andere Parents beziehen!!!
-
     }
 
     //... contains(...);
@@ -508,12 +529,14 @@ class BPTree {
 
 int main(void) {
     BPTree tree;
-    int keys = 13;
+    /*int keys = 13;
     for (int i = 1; i <= keys; i ++){
         tree.insertKey(i);
+    }*/
+    int data [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
+    for (int i : data){
+        tree.insertKey(i);
     }
-    tree.printTree();
-    tree.deleteKey(7);
     tree.printTree();
     return 0;
 }
