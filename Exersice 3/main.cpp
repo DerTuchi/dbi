@@ -1,9 +1,9 @@
 #include <iostream>
-#include <vector>
+#include <iterator>
+#include <algorithm>
 using namespace std;
 
 int order = 2;
-
 
 // BP node
 class Node {
@@ -131,6 +131,7 @@ class BPTree {
         /*  Wenn der Elternknoten noch Platz hat, wird an der passenden stelle die key eingefügt. Das selbe gilt für
          *  die Kinderpointer.
          * */
+
         if (cursor->size < order) {
             int i = 0;
             while (key > cursor->key[i] && i < cursor->size)
@@ -175,6 +176,7 @@ class BPTree {
             newInternal->leaf = false;
             cursor->size = (order + 1) / 2;
             newInternal->size = order - (order + 1) / 2;
+
             for (i = 0, j = cursor->size + 1; i < newInternal->size; i++, j++) {
                 newInternal->key[i] = virtualKey[j];
             }
@@ -190,7 +192,7 @@ class BPTree {
                 newRoot->size = 1;
                 root = newRoot;
             } else {
-                insertIntoNode(cursor->key[cursor->size], findParent(root, cursor), newInternal);
+                insertIntoNode(key, findParent(root, cursor), newInternal);
             }
         }
     }
@@ -198,7 +200,7 @@ class BPTree {
     Node* findParent(Node *cursor, Node *child){
         Node *parent;
         if (cursor->leaf || (cursor->ptr[0])->leaf) {
-            return nullptr;
+            return NULL;
         }
         for (int i = 0; i < cursor->size + 1; i++) {
             if (cursor->ptr[i] == child) {
@@ -206,7 +208,7 @@ class BPTree {
                 return parent;
             } else {
                 parent = findParent(cursor->ptr[i], child);
-                if (parent != nullptr)
+                if (parent != NULL)
                     return parent;
             }
         }
@@ -536,7 +538,8 @@ int main(void) {
     int data [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
     for (int i : data){
         tree.insertKey(i);
+        tree.printTree();
     }
-    tree.printTree();
+    //tree.printTree();
     return 0;
 }
