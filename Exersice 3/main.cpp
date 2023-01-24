@@ -50,21 +50,27 @@ class BPTree {
         //  Falls root schon existiert wird nach dem ersten leaf geschaut indem die Value eingefügt werden soll
         else{
             Node *cursor = root, *parent;
+            int leftChild;
             while (!(cursor->leaf)){
                 parent = cursor;
                 for (int i = 0; i < cursor->size; i++){
                     if (key < cursor->key[i]){
                         cursor = cursor->ptr[i];
+                        leftChild = i-1;
                         break;
                     }
                     if (i == cursor->size-1){
                         cursor = cursor->ptr[i+1];
+                        leftChild = i;
                         break;
                     }
                 }
             }
             /*  Wenn noch Platz im Leaf ist und ein Wert größer im Leaf ist, wird für Value platzt gemacht im Node, indem
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
+            if(cursor->size == order && cursor->key[order-1] == key && cursor->key[0] == key){
+                cursor = parent->ptr[leftChild];
+            }
             if (cursor->size < order){
                 int i = 0;
                 while(i < cursor->size && cursor->key[i] < key){i++;}
@@ -131,7 +137,7 @@ class BPTree {
         /*  Wenn der Elternknoten noch Platz hat, wird an der passenden stelle die key eingefügt. Das selbe gilt für
          *  die Kinderpointer.
          * */
-
+        int newKey = 0;
         if (cursor->size < order) {
             int i = 0;
             while (key > cursor->key[i] && i < cursor->size)
@@ -169,6 +175,9 @@ class BPTree {
                 virtualKey[j] = virtualKey[j - 1];
             }
             virtualKey[i] = key;
+            //WICHTIGE STELLE MIT DEM NEWKEY
+            newKey = virtualKey[(order + 1)/2];
+
             for (int j = order + 2; j > i + 1; j--) {
                 virtualPtr[j] = virtualPtr[j - 1];
             }
@@ -192,7 +201,7 @@ class BPTree {
                 newRoot->size = 1;
                 root = newRoot;
             } else {
-                insertIntoNode(key, findParent(root, cursor), newInternal);
+                insertIntoNode(newKey, findParent(root, cursor), newInternal);
             }
         }
     }
@@ -315,6 +324,18 @@ class BPTree {
                 }
             }
         }
+        //Check for duplicate entries
+        if (!cursor->leaf){
+            for (int i = 1; i < cursor->size; i ++){
+                for (int j = 0; j < cursor->ptr[i]->size-1; j++){
+                    if(cursor->ptr[i]->key[j] == key){
+                        cursor = cursor->ptr[i];
+                        break;
+                    }
+                }
+            }
+        }
+
         if(cursor->leaf){
             // Wenn die Min-Größe, der Nodes eingehalten wird und der Key nur im Leaf vorhanden ist, kann man den einfach entfernen
             int i=0;
@@ -485,36 +506,27 @@ class BPTree {
                 root = temp;
             }
         }
-
     }
 
     void deleteKeyHelp(Node* parent, Node* child, int rightSibling, int leftSibling){
         Node * cursor = child;
-        //cout<<"Delete without Recalibration: \n";
-        //cout<<"Parent: "; parent->printNode(); cout << " Child: "; cursor->printNode(); cout<<" Siblings(L,R): "<< leftSibling <<", "<< rightSibling<<"\n\n";
-        this->printTree();
+        Node * rightChild = parent->ptr[rightSibling];
         if (leftSibling == -1){
-            cursor->key[cursor->size] = parent->ptr[rightSibling]->key[0];
+            cursor->key[cursor->size] = rightChild->key[0];
             cursor->size ++;
             for (int j = 0; j < parent->size; j ++){
-                if(parent->key[j] == parent->ptr[rightSibling]->key[0]){
-                    parent->key[j] = parent->ptr[rightSibling]->key[1];
+                if(parent->key[j] == rightChild->key[0]){
+                    parent->key[j] = rightChild->key[1];
+                    break;
                 }
             }
-            for (int j = 0; j < parent->ptr[rightSibling]->size; j ++) {
-                parent->ptr[rightSibling]->key[j] = parent->ptr[rightSibling]->key[j + 1];
+            for (int j = 0; j < rightChild->size - 1; j ++) {
+                rightChild->key[j] = rightChild->key[j + 1];
             }
-            parent->ptr[rightSibling]->size --;
-            int threshhold = ((order/2) + 0.5) - 1;
-            if(threshhold <= 0){
-                threshhold = 1;
-            }
-            if(parent->ptr[rightSibling]->size < threshhold && parent->size > rightSibling){
-                deleteKeyHelp(parent, cursor, rightSibling + 1, -1);
-            }
-            else{
-                deleteKeyHelp(parent, cursor, rightSibling + 1, rightSibling);
-            }
+            rightChild->size --;
+        }
+        //Todo: Hier muss was geschehen
+        if (rightChild->size == 0){
 
         }
         else if(rightSibling > parent->size){
@@ -525,21 +537,22 @@ class BPTree {
             parent->size --;
         }
     }
-
-    //... contains(...);
 };
 
 int main(void) {
     BPTree tree;
-    /*int keys = 13;
-    for (int i = 1; i <= keys; i ++){
-        tree.insertKey(i);
-    }*/
     int data [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
     for (int i : data){
         tree.insertKey(i);
+    }
+    tree.printTree();
+    int dataDelete[] = {36};
+    for (int i : dataDelete){
+        tree.deleteKey(i);
         tree.printTree();
     }
+
+    //Todo: Anschauen was passiert wenn ich 36 Lösche? Einfach mal alle ausprobieren. BEIM LÖSCHEN DES LINKEN CHILDS FUNKTIONOIERT ES NICHT!
     //tree.printTree();
     return 0;
 }
