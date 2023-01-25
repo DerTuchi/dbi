@@ -351,7 +351,39 @@ class BPTree {
             cursor->size --;
             // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
             if (cursor->size < threshhold){
-                deleteKeyHelp(parent, cursor, rightSibling, leftSibling);
+                Node *leftChild = nullptr, *rightChild = nullptr;
+                if(rightSibling <= order+1){
+                    rightChild = parent->ptr[rightSibling];
+                }
+                if(leftSibling >= 0){
+                    leftChild = parent->ptr[leftSibling];
+                }
+                //Rechtes Node ein Element nehmen
+                if(rightChild != nullptr && rightChild->size > threshhold){
+                    cursor->key[cursor->size] = rightChild->key[0];
+                    cursor->size ++;
+                    for (int i = 0; i < rightChild->size; i ++){
+                        rightChild->key[i] = rightChild->key[i+1];
+                    }
+                    rightChild->size--;
+                    parent->key[rightSibling - 1] = cursor->key[0];
+                    return;
+                }
+                // Linkes Node ein element nehmen
+                else if(leftChild != nullptr && leftChild->size > threshhold){
+                    for(int i = cursor->size; i > 0; i --){
+                        cursor->key[i] = cursor->key[i-1];
+                    }
+                    cursor->key[0] = leftChild->key[leftChild->size];
+                    cursor->size ++;
+                    leftChild->size --;
+                    parent->key[leftSibling + 1] = cursor->key[0];
+                    return;
+                }
+                // Wenn beides nicht geht, muss gemerged werden
+                else{
+                    //TODO: Merge funktion implementieren
+                }
             }
         }
         else{
@@ -508,35 +540,10 @@ class BPTree {
         }
     }
 
-    void deleteKeyHelp(Node* parent, Node* child, int rightSibling, int leftSibling){
-        Node * cursor = child;
-        Node * rightChild = parent->ptr[rightSibling];
-        if (leftSibling == -1){
-            cursor->key[cursor->size] = rightChild->key[0];
-            cursor->size ++;
-            for (int j = 0; j < parent->size; j ++){
-                if(parent->key[j] == rightChild->key[0]){
-                    parent->key[j] = rightChild->key[1];
-                    break;
-                }
-            }
-            for (int j = 0; j < rightChild->size - 1; j ++) {
-                rightChild->key[j] = rightChild->key[j + 1];
-            }
-            rightChild->size --;
-        }
-        //Todo: Hier muss was geschehen
-        if (rightChild->size == 0){
+    void mergeNodes(int key, Node *cursor, Node *child){
 
-        }
-        else if(rightSibling > parent->size){
-            for (int i = 0; i < cursor->size; i ++){
-                parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size+i] = cursor->key[i];
-            }
-            parent->ptr[parent->size+1] = nullptr;
-            parent->size --;
-        }
     }
+
 };
 
 int main(void) {
@@ -546,7 +553,7 @@ int main(void) {
         tree.insertKey(i);
     }
     tree.printTree();
-    int dataDelete[] = {36};
+    int dataDelete[] = {40};
     for (int i : dataDelete){
         tree.deleteKey(i);
         tree.printTree();
