@@ -289,7 +289,7 @@ class BPTree {
             threshhold = 1;
         }
         Node *cursor = searchTree(key);
-        Node *parent;
+        Node *parent = nullptr;
         bool condition = true;
         int leftSibling = 0, rightSibling = 0;
         if (cursor == nullptr){
@@ -297,8 +297,9 @@ class BPTree {
             return;
         }
         cursor = root;
-        for(int i = 0; i < cursor->size; i ++){
-            if (cursor->key[i]==key){
+        for (int i = 0; i < cursor->size; i++){
+            if (cursor->key[i] == key){
+                parent = cursor;
                 condition = false;
             }
         }
@@ -319,24 +320,64 @@ class BPTree {
                 }
             }
             for (int i = 0; i < cursor->size; i++){
-                if (cursor->key[i] == key){
+                if (cursor->key[i] == key && cursor->leaf){
                     condition = false;
                 }
             }
         }
-        //Check for duplicate entries
-        if (!cursor->leaf){
-            for (int i = 1; i < cursor->size; i ++){
-                for (int j = 0; j < cursor->ptr[i]->size-1; j++){
-                    if(cursor->ptr[i]->key[j] == key){
+        // Schauen, ob man im Parent mit selben Index, den durch den nachbarn im leaf ersetzen kann.
+        /*if(!cursor->leaf){
+            Node * temp = cursor;
+            condition = true;
+            int cursorKeyLocation = 0;
+            bool right = true;
+            while (condition){
+                parent = cursor;
+                for (int i = 0; i < cursor->size; i++){
+                    if (key < cursor->key[i]){
                         cursor = cursor->ptr[i];
+                        leftSibling = i-1;
+                        rightSibling = i+1;
+                        break;
+                    }
+                    if (i == cursor->size-1){
+                        cursor = cursor->ptr[i + 1];
+                        leftSibling = i;
+                        rightSibling = i +2;
+                        right = false;
+                        break;
+                    }
+                }
+                for (cursorKeyLocation = 0; cursorKeyLocation < cursor->size; cursorKeyLocation++){
+                    if (cursor->key[cursorKeyLocation] == key && cursor->leaf){
+                        condition = false;
                         break;
                     }
                 }
             }
-        }
-
-        if(cursor->leaf){
+            if(cursor->size > threshhold){
+                for(int i = 0; i < temp->size; i++){
+                    if(temp->key[i] == key){
+                        temp->key[i] = cursor->key[cursorKeyLocation+1];
+                        break;
+                    }
+                }
+            }
+            else{
+                for(int i = 0; i < temp->size; i++){
+                    if(temp->key[i] == key){
+                        if(right && parent->ptr[rightSibling]->size > threshhold){
+                            temp->key[i] = parent->ptr[rightSibling]->key[0];
+                        }
+                        else{
+                            temp->key[i] = parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1];
+                        }
+                        break;
+                    }
+                }
+            }
+        }*/
+        //if(cursor->leaf){
             // Wenn die Min-Größe, der Nodes eingehalten wird und der Key nur im Leaf vorhanden ist, kann man den einfach entfernen
             int i=0;
             while(true){
@@ -351,200 +392,85 @@ class BPTree {
             cursor->size --;
             // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
             if (cursor->size < threshhold){
-                Node *leftChild = nullptr, *rightChild = nullptr;
-                if(rightSibling <= order+1){
-                    rightChild = parent->ptr[rightSibling];
-                }
-                if(leftSibling >= 0){
-                    leftChild = parent->ptr[leftSibling];
-                }
-                //Rechtes Node ein Element nehmen
-                if(rightChild != nullptr && rightChild->size > threshhold){
-                    cursor->key[cursor->size] = rightChild->key[0];
-                    cursor->size ++;
-                    for (int i = 0; i < rightChild->size; i ++){
-                        rightChild->key[i] = rightChild->key[i+1];
-                    }
-                    rightChild->size--;
-                    parent->key[rightSibling - 1] = cursor->key[0];
-                    parent->key[rightSibling] = rightChild->key[0];
-                    return;
-                }
-                // Linkes Node ein element nehmen
-                else if(leftChild != nullptr && leftChild->size > threshhold){
-                    for(int i = cursor->size; i > 0; i --){
-                        cursor->key[i] = cursor->key[i-1];
-                    }
-                    cursor->key[0] = leftChild->key[leftChild->size];
-                    cursor->size ++;
-                    leftChild->size --;
-                    parent->key[leftSibling + 1] = cursor->key[0];
-                    return;
-                }
-                // Wenn beides nicht geht, muss gemerged werden
-                else{
-                    if(rightSibling <= order+1){
+                if(rightSibling <= cursor->size + 1){
+                    if(!getKeyFromSibling(parent, cursor, rightSibling, false)){
                         mergeNodes(key, parent,cursor, rightSibling);
                     }
-                    else{
-                        mergeNodes(key, parent,cursor, leftSibling);
+                }
+                else if(leftSibling >= 0){
+                    if(!getKeyFromSibling(parent, cursor, leftSibling, true)){
+                        mergeNodes(parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1], parent,cursor, leftSibling);
                     }
+
                 }
             }
+        //}
+    }
+
+    bool getKeyFromSibling(Node *parent, Node* cursor, int sibling, bool leftSibling){
+        int threshhold = ((order/2) + 0.5) - 1;
+        if(threshhold <= 0){
+            threshhold = 1;
         }
-        //TODO: Wenn es kein LEAF ist muss ich damit anders umgehen
-        else{
-            int parentKeyLocation=0;
-            while(true){
-                if(cursor->key[parentKeyLocation] == key){
-                    break;
+        Node *child = parent->ptr[sibling];
+        // Rechtes Node ein Element nehmen
+        if(!leftSibling &&child->size > threshhold){
+            // Falls der Parent einen anderen Wert hat, muss dieser beim Klauen des nachbarn berücksichtigt werden
+            if(parent->key[sibling-1] != child->key[0]){
+                cursor->key[cursor->size] = parent->key[sibling-1];
+                parent->key[sibling-1] = child->key[0];
+                for (int i = 0; i < child->size; i ++){
+                    child->key[i] = child->key[i+1];
                 }
-                parentKeyLocation++;
+                cursor->ptr[cursor->size + 1] = child->ptr[0];
+                for(int i = 0; i < child->size + 1; i ++){
+                    child->ptr[i] = child->ptr[i+1];
+                }
+                child->size--;
+                cursor->size ++;
             }
-            parent = cursor;
-            for (int j = 0; j < cursor->size; j++){
-                if (key < cursor->key[j]){
-                    cursor = cursor->ptr[j];
-                    leftSibling = j-1;
-                    rightSibling = j+1;
-                    break;
+            // Andernfalls kann man die Werte einfach Klauen und Löschen
+            else{
+                cursor->key[cursor->size] = child->key[0];
+                cursor->size ++;
+                for (int i = 0; i < child->size; i ++){
+                    child->key[i] = child->key[i+1];
                 }
-                if (j == cursor->size - 1){
-                    cursor = cursor->ptr[j + 1];
-                    leftSibling = j;
-                    rightSibling = j+2;
-                    break;
-                }
+                child->size--;
+                parent->key[sibling - 2] = cursor->key[0];
+                parent->key[sibling - 1] = child->key[0];
             }
-            bool parentFollowsLeaf = false;
-            for (int j = 0; j < cursor->size; j ++) {
-                if (cursor->leaf && cursor->key[j] == key) {
-                    parentFollowsLeaf = true;
-                }
-            }
-            if (parentFollowsLeaf){
-                int cursorKeyLocation = 0;
-                while(true){
-                    if(cursor->key[cursorKeyLocation] == key){
-                        break;
-                    }
-                    cursorKeyLocation ++;
-                }
-                for (int j = cursorKeyLocation; j < cursor->size - 1; j ++){
-                    cursor->key[j] = cursor->key[j+1];
-                }
-                if (cursor->size > threshhold){
-                    cursor->size --;
-                    parent->key[parentKeyLocation] = cursor->key[0];
-                }
-                else if (cursor->size == threshhold){
-                    int nodeTemp [order];
-                    nodeTemp[0] = parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1];
-                    for (int j = 1; j < cursor->size; j++){
-                        nodeTemp[j] = cursor->key[j];
-                    }
-                    for (int j =0; j < cursor->size + 1; j++){
-                        cursor->key[j] = nodeTemp[j];
-                    }
-                    parent->key[parentKeyLocation] = nodeTemp[0];
-                    parent->ptr[leftSibling]->size --;
-                }
-            }
-            else {
-                Node * temp = cursor;
-                condition = true;
-                while (condition){
-                    temp = cursor;
-                    for (int i = 0; i < cursor->size; i++){
-                        if (key < cursor->key[i]){
-                            cursor = cursor->ptr[i];
-                            leftSibling = i-1;
-                            rightSibling = i+1;
-                            break;
-                        }
-                        if (i == cursor->size-1){
-                            cursor = cursor->ptr[i + 1];
-                            leftSibling = i;
-                            rightSibling = i +2;
-                            break;
-                        }
-                    }
-                    for (int i = 0; i < cursor->size; i++){
-                        if (cursor->key[i] == key){
-                            condition = false;
-                        }
-                    }
-                }
-                //Löschen in leaf und aufrücken der anderen Nodes
-                int leafKeyLocation = 0;
-                for(leafKeyLocation; leafKeyLocation < cursor->size; leafKeyLocation++){
-                    if(cursor->key[leafKeyLocation] == key){
-                        break;
-                    }
-                }
-                for(int i = leafKeyLocation; i < cursor->size-1; i++){
+            return true;
+        }
+        // Linkes Node ein element nehmen
+        else if(leftSibling && child->size > threshhold){
+            // Falls der Parent einen anderen Wert hat, muss dieser beim Klauen des nachbarn berücksichtigt werden
+            if(parent->key[sibling] != cursor->key[0]){
+                for(int i = 0; i < cursor->size; i ++){
                     cursor->key[i] = cursor->key[i+1];
                 }
-                cursor->size --;
-                //Leafs zusammen fügen
-                    int newSize = temp->ptr[0]->size + temp->ptr[1]->size;
-                    int tempValues [newSize];
-                    int tempValuesCount = 0;
-                    for(tempValuesCount; tempValuesCount < temp->ptr[0]->size;tempValuesCount++){
-                        tempValues[tempValuesCount] = temp->ptr[0]->key[tempValuesCount];
-                    }
-                    for(int i = 0; i < temp->ptr[1]->size; i++){
-                        tempValues[i + tempValuesCount] = temp->ptr[1]->key[i];
-                    }
-                    for(int i = 0; i < newSize;i++){
-                        cursor->key[i] = tempValues[i];
-                    }
-                    cursor->size = newSize;
-                    for(int i = 1; i < temp->size+1;i++){
-                        if (i == temp->size){
-                            temp->ptr[i] = nullptr;
-                            break;
-                        }
-                        else{
-                            temp->ptr[i]->size = temp->ptr[i+1]->size;
-                        }
-                        for(int j = 0; j < temp->ptr[i]->size;j++){
-                            temp->ptr[i]->key[j] = temp->ptr[i+1]->key[j];
-                        }
-                    }
-                //Im parent den neuen Wert ändern
-                parent->key[parentKeyLocation] = temp->key[0];
-                for(int i = 0; i < temp->size-1; i++){
-                    temp->key[i] = temp->key[i+1];
+                cursor->key[0] = parent->key[sibling];
+                parent->key[sibling] = child->key[child->size];
+                for(int i = 0; i < cursor->size + 1; i ++){
+                    cursor->ptr[i] = cursor->ptr[i+1];
                 }
-                temp->size --;
-                cursor = temp;
+                cursor->ptr[0] = child->ptr[child->size + 1];
+                child->size --;
+                cursor->size ++;
             }
-            cout<<"Parent:";
-            parent->printNode();
-            cout<<"\nCursor:";
-            cursor->printNode();
-            cout<<"\n";
-            leftSibling = parent->size - 1;
-            rightSibling = parent->size;
-            if (cursor->size < threshhold && parent->ptr[rightSibling]->size < threshhold){
-                for (int i = 0; i < root->size; i ++){
-                    if (root->key[i] == key){
-                        Node *temp = parent->ptr[leftSibling];
-                        temp->key[temp->size] = cursor->ptr[0]->key[0];
-                        temp->size++;
-                        temp->ptr[temp->size + 1] = cursor->ptr[0];
-                        root = temp;
-                        return;
-                    }
+            // Andernfalls kann man die Werte einfach Klauen und Löschen
+            else{
+                for(int i = cursor->size; i > 0; i --){
+                    cursor->key[i] = cursor->key[i-1];
                 }
-                Node *temp = parent->ptr[leftSibling];
-                temp->key[temp->size] = parent->key[parent->size];
-                temp->size++;
-                temp->ptr[temp->size + 1] = cursor->ptr[0];
-                root = temp;
+                cursor->key[0] = child->key[child->size-1];
+                cursor->size ++;
+                child->size --;
+                parent->key[sibling] = cursor->key[0];
             }
+            return true;
         }
+        return false;
     }
 
     void mergeNodes(int key, Node *parent, Node *cursor, int mergePartner){
@@ -555,48 +481,89 @@ class BPTree {
         Node * child = parent->ptr[mergePartner];
         //child ist rechts
         if(key < child->key[0]){
-            //Schauen ob der Parent beim Merge einen anderen Wert hat
-            if(child->key[0] != parent->key[mergePartner - 1]){
+            //Schauen ob der Parent beim Merge einen anderen Wert hat und ggf mit einbeziehen
+            if(child->key[0]!=parent->key[mergePartner - 1]){
+                //Wert in Child einfügen
                 for(int i = child->size; i > 0; i --){
                     child->key[i] = child->key[i-1];
                 }
-                child->key[0] = child->key[mergePartner - 1];
+                child->key[0] = parent->key[mergePartner - 1];
                 child->size++;
             }
-            //Wenn es kein Leaf ist sollen auch die Pointer mit gemerged werden
+
+            //Wert aus Parent entfernen
+            int parentKeyLocation = 0;
+            for(parentKeyLocation; parentKeyLocation < parent->size; parentKeyLocation++){
+                if(parent->key[parentKeyLocation] == parent->key[mergePartner -1]){
+                    break;
+                }
+            }
+            for(parentKeyLocation; parentKeyLocation < parent->size; parentKeyLocation ++){
+                parent->key[parentKeyLocation] = parent->key[parentKeyLocation+1];
+            }
+            parent->size --;
+
+            // Wenn es kein Leaf ist, sollen auch die Pointer mit gemerged werden
             if(!cursor->leaf){
                for(int i = 0; i < child->size + 1; i++){
-                   cursor->ptr[cursor->size + i] = child->ptr[i];
+                   cursor->ptr[cursor->size + 1 + i] = child->ptr[i];
                }
             }
-            //Mergen der beiden Nodes
+            //Mergen der Keys
             for(int i = 0; i < child->size; i ++){
                 cursor->key[cursor->size + i] = child->key[i];
             }
         }
         //child ist links
         else{
-            //Schauen ob der Parent beim Merge einen anderen Wert hat
+            //Schauen ob der Parent beim Merge einen anderen Wert hat und ggf mit einbeziehen
             if(cursor->key[0] != parent->key[mergePartner]){
-                for(int i = cursor->size; i > 0; i --){
-                    cursor->key[i] = cursor->key[i-1];
-                }
-                cursor->key[0] = parent->key[mergePartner];
-                cursor->size++;
-            }
-            //Wenn es kein Leaf ist sollen auch die Pointer mit gemerged werden
-            if(!cursor->leaf){
-                Node *tempPtr [cursor->size+1 + child->size+1];
-                for(int i = 0; i < child->size + 1; i++){
-                    tempPtr[i] = child->ptr[i];
-                }
-                for(int i = 0; i < cursor->size + 1; i++){
-                    tempPtr[child->size + 1 + i] = cursor->ptr[i];
-                }
-                for(int i = 0; i < cursor->size + child->size + 2; i ++){
-                    cursor->ptr[i] = tempPtr[i];
+                child->key[child->size] = parent->key[mergePartner];
+                child->size++;
+                // Wenn es kein Leaf ist, sollen auch die Pointer mit gemerged werden
+                if(!cursor->leaf){
+                    Node *tempPtr [cursor->size +1 + child->size];
+                    for(int i = 0; i < child->size; i++){
+                        tempPtr[i] = child->ptr[i];
+                    }
+                    for(int i = 0; i < cursor->size + 1; i++){
+                        tempPtr[child->size + i] = cursor->ptr[i];
+                    }
+                    for(int i = 0; i < cursor->size + child->size + 2; i ++){
+                        cursor->ptr[i] = tempPtr[i];
+                    }
                 }
             }
+            else{
+                // Wenn es kein Leaf ist, sollen auch die Pointer mit gemerged werden
+                if(!cursor->leaf){
+                    Node *tempPtr [cursor->size+1 + child->size+1];
+                    for(int i = 0; i < child->size + 1; i++){
+                        tempPtr[i] = child->ptr[i];
+                    }
+                    for(int i = 0; i < cursor->size + 1; i++){
+                        tempPtr[child->size + 1 + i] = cursor->ptr[i];
+                    }
+                    for(int i = 0; i < cursor->size + child->size + 2; i ++){
+                        cursor->ptr[i] = tempPtr[i];
+                    }
+                }
+            }
+            //Wert aus Parent entfernen
+            int parentKeyLocation = 0;
+            for(parentKeyLocation; parentKeyLocation < parent->size; parentKeyLocation++){
+                if(parent->key[parentKeyLocation] == parent->key[mergePartner]){
+                    break;
+                }
+            }
+            for(int i = parentKeyLocation; i < parent->size; i ++){
+                parent->key[i] = parent->key[i + 1];
+            }
+            for(int i = parentKeyLocation; i < parent->size + 1; i ++){
+                parent->ptr[i] = parent->ptr[i+1];
+            }
+            parent->size --;
+
             //Mergen der beiden Nodes
             int tempValues [cursor->size + child->size];
             for (int i = 0; i < child->size; i ++){
@@ -605,6 +572,7 @@ class BPTree {
             for(int i = 0; i < cursor->size; i++){
                 tempValues[child->size + i] = cursor->key[i];
             }
+
             for(int i = 0; i < cursor->size + child->size; i ++){
                 cursor->key[i] = tempValues[i];
             }
@@ -615,41 +583,33 @@ class BPTree {
         delete[] child->key;
         delete[] child->ptr;
         delete child;
-        //Anpassen des Parents beim Merge
-        for(int i = mergePartner - 1; i < parent->size; i++){
-            parent->key[i] = parent->key[i+1];
-        }
-        for(int  i = mergePartner; i < parent->size + 1; i ++){
-            parent->ptr[i] = parent->ptr[i+1];
-        }
-        parent->size --;
-        //Wenn Parent Root ist und gleich 0, wird cursor zum root
+
+        //Wenn Parent Root ist und size = 0, wird cursor zum root
         if(parent == root && parent->size == 0){
             root = cursor;
             return;
         }
-        //Rekursion, falls Parent den Threshhold nicht einhalten kann
+        //Rekursion, falls Parent den Threshhold nicht einhalten kann und kein root ist
         if (parent->size < threshhold && parent != root){
             Node *newParent = findParent(root, parent);
             int left, right;
-            bool rightAsChild = true;
+            bool rightAsChild = true, leftAsChild = false;
             for(int i = 0; i < newParent->size + 1; i ++){
                 left = i - 1;
                 right = i + 1;
-                if(newParent->ptr[i] == parent){
+                if(i == newParent->size && newParent->ptr[i] == parent){
+                    rightAsChild = false;
+                    leftAsChild = true;
                     break;
                 }
-                if(i == newParent->size){
-                    left = i;
-                    right = i + 2;
-                    rightAsChild = false;
-                }
+                if(newParent->ptr[i] == parent){ break;}
             }
-            if(rightAsChild){
+
+            if(rightAsChild && !getKeyFromSibling(newParent, parent, right, leftAsChild)){
                 mergeNodes(parent->key[parent->size - 1], newParent, parent, right);
             }
-            else{
-                mergeNodes(parent->key[0], newParent, parent, left);
+            else if(leftAsChild && !getKeyFromSibling(newParent, parent, left, leftAsChild)){
+                mergeNodes(newParent->ptr[left]->key[newParent->ptr[left]->size-1], newParent, parent, left);
             }
         }
     }
@@ -663,8 +623,9 @@ int main(void) {
         tree.insertKey(i);
     }
     tree.printTree();
-    int dataDelete[] = {40};
+    int dataDelete[] = {42,42,42};
     for (int i : dataDelete){
+        cout<< "Try to delete Key: "<<i<<"\n\n";
         tree.deleteKey(i);
         tree.printTree();
     }
