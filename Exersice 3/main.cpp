@@ -382,10 +382,16 @@ class BPTree {
                 }
                 // Wenn beides nicht geht, muss gemerged werden
                 else{
-                    //TODO: Merge funktion implementieren
+                    if(rightSibling <= order+1){
+                        mergeNodes(key, parent,cursor, rightSibling);
+                    }
+                    else{
+                        mergeNodes(key, parent,cursor, leftSibling);
+                    }
                 }
             }
         }
+        //TODO: Wenn es kein LEAF ist muss ich damit anders umgehen
         else{
             int parentKeyLocation=0;
             while(true){
@@ -540,8 +546,111 @@ class BPTree {
         }
     }
 
-    void mergeNodes(int key, Node *cursor, Node *child){
+    void mergeNodes(int key, Node *parent, Node *cursor, int mergePartner){
+        int threshhold = ((order/2) + 0.5) - 1;
+        if(threshhold <= 0){
+            threshhold = 1;
+        }
+        Node * child = parent->ptr[mergePartner];
+        //child ist rechts
+        if(key < child->key[0]){
+            //Schauen ob der Parent beim Merge einen anderen Wert hat
+            if(child->key[0] != parent->key[mergePartner - 1]){
+                for(int i = child->size; i > 0; i --){
+                    child->key[i] = child->key[i-1];
+                }
+                child->key[0] = child->key[mergePartner - 1];
+                child->size++;
+            }
+            //Wenn es kein Leaf ist sollen auch die Pointer mit gemerged werden
+            if(!cursor->leaf){
+               for(int i = 0; i < child->size + 1; i++){
+                   cursor->ptr[cursor->size + i] = child->ptr[i];
+               }
+            }
+            //Mergen der beiden Nodes
+            for(int i = 0; i < child->size; i ++){
+                cursor->key[cursor->size + i] = child->key[i];
+            }
+        }
+        //child ist links
+        else{
+            //Schauen ob der Parent beim Merge einen anderen Wert hat
+            if(cursor->key[0] != parent->key[mergePartner]){
+                for(int i = cursor->size; i > 0; i --){
+                    cursor->key[i] = cursor->key[i-1];
+                }
+                cursor->key[0] = parent->key[mergePartner];
+                cursor->size++;
+            }
+            //Wenn es kein Leaf ist sollen auch die Pointer mit gemerged werden
+            if(!cursor->leaf){
+                Node *tempPtr [cursor->size+1 + child->size+1];
+                for(int i = 0; i < child->size + 1; i++){
+                    tempPtr[i] = child->ptr[i];
+                }
+                for(int i = 0; i < cursor->size + 1; i++){
+                    tempPtr[child->size + 1 + i] = cursor->ptr[i];
+                }
+                for(int i = 0; i < cursor->size + child->size + 2; i ++){
+                    cursor->ptr[i] = tempPtr[i];
+                }
+            }
+            //Mergen der beiden Nodes
+            int tempValues [cursor->size + child->size];
+            for (int i = 0; i < child->size; i ++){
+                tempValues[i] = child->key[i];
+            }
+            for(int i = 0; i < cursor->size; i++){
+                tempValues[child->size + i] = cursor->key[i];
+            }
+            for(int i = 0; i < cursor->size + child->size; i ++){
+                cursor->key[i] = tempValues[i];
+            }
+        }
+        cursor->size = cursor->size + child->size;
 
+        //Löschen des childs
+        delete[] child->key;
+        delete[] child->ptr;
+        delete child;
+        //Anpassen des Parents beim Merge
+        for(int i = mergePartner - 1; i < parent->size; i++){
+            parent->key[i] = parent->key[i+1];
+        }
+        for(int  i = mergePartner; i < parent->size + 1; i ++){
+            parent->ptr[i] = parent->ptr[i+1];
+        }
+        parent->size --;
+        //Wenn Parent Root ist und gleich 0, wird cursor zum root
+        if(parent == root && parent->size == 0){
+            root = cursor;
+            return;
+        }
+        //Rekursion, falls Parent den Threshhold nicht einhalten kann
+        if (parent->size < threshhold && parent != root){
+            Node *newParent = findParent(root, parent);
+            int left, right;
+            bool rightAsChild = true;
+            for(int i = 0; i < newParent->size + 1; i ++){
+                left = i - 1;
+                right = i + 1;
+                if(newParent->ptr[i] == parent){
+                    break;
+                }
+                if(i == newParent->size){
+                    left = i;
+                    right = i + 2;
+                    rightAsChild = false;
+                }
+            }
+            if(rightAsChild){
+                mergeNodes(parent->key[parent->size - 1], newParent, parent, right);
+            }
+            else{
+                mergeNodes(parent->key[parent->size - 1], newParent, parent, left);
+            }
+        }
     }
 
 };
