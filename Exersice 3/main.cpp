@@ -367,6 +367,7 @@ class BPTree {
                     }
                     rightChild->size--;
                     parent->key[rightSibling - 1] = cursor->key[0];
+                    parent->key[rightSibling] = rightChild->key[0];
                     return;
                 }
                 // Linkes Node ein element nehmen
@@ -648,7 +649,7 @@ class BPTree {
                 mergeNodes(parent->key[parent->size - 1], newParent, parent, right);
             }
             else{
-                mergeNodes(parent->key[parent->size - 1], newParent, parent, left);
+                mergeNodes(parent->key[0], newParent, parent, left);
             }
         }
     }
