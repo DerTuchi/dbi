@@ -274,11 +274,9 @@ class BPTree {
             }
             for (int i = 0; i < cursor->size; i ++){
                 if (cursor->key[i] == key){
-                    //cout<<"Key found!\n";
                     return cursor;
                 }
             }
-            //cout<<"Key not found!\n";
             return nullptr;
         }
     }
@@ -325,86 +323,32 @@ class BPTree {
                 }
             }
         }
-        // Schauen, ob man im Parent mit selben Index, den durch den nachbarn im leaf ersetzen kann.
-        /*if(!cursor->leaf){
-            Node * temp = cursor;
-            condition = true;
-            int cursorKeyLocation = 0;
-            bool right = true;
-            while (condition){
-                parent = cursor;
-                for (int i = 0; i < cursor->size; i++){
-                    if (key < cursor->key[i]){
-                        cursor = cursor->ptr[i];
-                        leftSibling = i-1;
-                        rightSibling = i+1;
-                        break;
-                    }
-                    if (i == cursor->size-1){
-                        cursor = cursor->ptr[i + 1];
-                        leftSibling = i;
-                        rightSibling = i +2;
-                        right = false;
-                        break;
-                    }
-                }
-                for (cursorKeyLocation = 0; cursorKeyLocation < cursor->size; cursorKeyLocation++){
-                    if (cursor->key[cursorKeyLocation] == key && cursor->leaf){
-                        condition = false;
-                        break;
-                    }
+        // Wenn die Min-Größe, der Nodes eingehalten wird und der Key nur im Leaf vorhanden ist, kann man den einfach entfernen
+        int i=0;
+        while(true){
+            if(cursor->key[i] == key){
+                break;
+            }
+            i++;
+        }
+        for (int j = i; j < cursor->size -1; j++){
+            cursor->key[j] = cursor->key[j+1];
+        }
+        cursor->size --;
+        // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
+        if (cursor->size < threshhold){
+            if(rightSibling <= cursor->size + 1){
+                if(!getKeyFromSibling(parent, cursor, rightSibling, false)){
+                    mergeNodes(key, parent,cursor, rightSibling);
                 }
             }
-            if(cursor->size > threshhold){
-                for(int i = 0; i < temp->size; i++){
-                    if(temp->key[i] == key){
-                        temp->key[i] = cursor->key[cursorKeyLocation+1];
-                        break;
-                    }
+            else if(leftSibling >= 0){
+                if(!getKeyFromSibling(parent, cursor, leftSibling, true)){
+                    mergeNodes(parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1], parent,cursor, leftSibling);
                 }
-            }
-            else{
-                for(int i = 0; i < temp->size; i++){
-                    if(temp->key[i] == key){
-                        if(right && parent->ptr[rightSibling]->size > threshhold){
-                            temp->key[i] = parent->ptr[rightSibling]->key[0];
-                        }
-                        else{
-                            temp->key[i] = parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1];
-                        }
-                        break;
-                    }
-                }
-            }
-        }*/
-        //if(cursor->leaf){
-            // Wenn die Min-Größe, der Nodes eingehalten wird und der Key nur im Leaf vorhanden ist, kann man den einfach entfernen
-            int i=0;
-            while(true){
-                if(cursor->key[i] == key){
-                    break;
-                }
-                i++;
-            }
-            for (int j = i; j < cursor->size -1; j++){
-                cursor->key[j] = cursor->key[j+1];
-            }
-            cursor->size --;
-            // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
-            if (cursor->size < threshhold){
-                if(rightSibling <= cursor->size + 1){
-                    if(!getKeyFromSibling(parent, cursor, rightSibling, false)){
-                        mergeNodes(key, parent,cursor, rightSibling);
-                    }
-                }
-                else if(leftSibling >= 0){
-                    if(!getKeyFromSibling(parent, cursor, leftSibling, true)){
-                        mergeNodes(parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1], parent,cursor, leftSibling);
-                    }
 
-                }
             }
-        //}
+        }
     }
 
     bool getKeyFromSibling(Node *parent, Node* cursor, int sibling, bool leftSibling){
@@ -618,19 +562,31 @@ class BPTree {
 
 int main(void) {
     BPTree tree;
-    int data [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
-    for (int i : data){
+    // In Baum Keys einfügen
+    int dataInsert [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
+    for (int i : dataInsert){
         tree.insertKey(i);
     }
     tree.printTree();
-    int dataDelete[] = {42,42,42};
+    // Aus Baum Keys entfernen
+    int dataDelete[] = {5,42,30,15};
     for (int i : dataDelete){
         cout<< "Try to delete Key: "<<i<<"\n\n";
         tree.deleteKey(i);
-        tree.printTree();
     }
-
-    //Todo: Anschauen was passiert wenn ich 36 Lösche? Einfach mal alle ausprobieren. BEIM LÖSCHEN DES LINKEN CHILDS FUNKTIONOIERT ES NICHT!
-    //tree.printTree();
+    tree.printTree();
+    // Suchen, ob im Baum vorhanden
+    int dataSearch[] = {42,30,55,100,40,25};
+    for(int i : dataSearch){
+        Node * result = tree.searchTree(i);
+        if(result != nullptr){
+            cout<<"Found key: " << i<<"\t";
+            result->printNode();
+            cout<<"\n\n";
+        }
+        else{
+            cout<<"Key: "<< i << " not Found!\n\n";
+        }
+    }
     return 0;
 }
