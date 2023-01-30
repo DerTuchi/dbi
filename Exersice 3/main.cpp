@@ -203,6 +203,16 @@ public:
             for (int j = cursor->size+1; j > i + 1; j--) {
                 cursor->ptr[j] = cursor->ptr[j-1];
             }
+
+            for(int j = 0; j < cursor->size; j ++){
+                if(key == cursor->key[j] && cursor->ptr[j+1]->key[cursor->ptr[j+1]->size- 1] < child->key[child->size-1]){
+                    cursor->ptr[j+2] = child;
+                    cursor->key[i] = key;
+                    cursor->size++;
+                    return;
+                }
+            }
+
             cursor->key[i] = key;
             cursor->size++;
             cursor->ptr[i+1] = child;
@@ -218,12 +228,14 @@ public:
             int virtualKey[order + 1];
             int virtualKeyCopy[order+1];
             Node *virtualPtr[order + 2];
+            Node *virtualPtrCopy[order + 2];
             for (int i = 0; i < order; i++) {
                 virtualKey[i] = cursor->key[i];
                 virtualKeyCopy[i] = cursor->key[i];
             }
             for (int i = 0; i < order + 1; i++) {
                 virtualPtr[i] = cursor->ptr[i];
+                virtualPtrCopy[i] = cursor->ptr[i];
             }
             int i = 0, j;
             while (key > virtualKey[i] && i < order)
@@ -238,12 +250,13 @@ public:
             //WICHTIGE STELLE MIT DEM NEWKEY
             newKey = virtualKeyCopy[(order + 1)/2];
 
-
-            for (int j = order + 2; j > i + 1; j--) {
-                virtualPtr[j] = virtualPtr[j - 1];
+            if(virtualPtrCopy[order]->key[virtualPtrCopy[order]->size-1] < child->key[child->size-1]) virtualPtr[order+1] = child;
+            else{
+                for (int j = order + 2; j > i + 1; j--) {
+                    virtualPtr[j] = virtualPtr[j - 1];
+                }
+                virtualPtr[i + 1] = child;
             }
-            virtualPtr[i + 1] = child;
-
             unique_lock<mutex> l1(cursor->node_mutex);
 
             cursor->size = (order + 1) / 2;
