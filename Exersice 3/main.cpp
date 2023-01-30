@@ -241,6 +241,16 @@ public:
 
             newInternal->leaf = false;
             newInternal->size = order - (order + 1) / 2;
+
+            if(cursor->key[0] != virtualKey[0]){
+                for(i = 0; i < cursor->size; i++){
+                    cursor->key[i] = virtualKey[i];
+                }
+                for(i = 0; i < cursor->size + 1; i++){
+                    cursor->ptr[i] = virtualPtr[i];
+                }
+            }
+
             for (i = 0, j = cursor->size + 1; i < newInternal->size; i++, j++) {
                 newInternal->key[i] = virtualKey[j];
             }
@@ -258,7 +268,6 @@ public:
                 newRoot->size = 1;
                 root = newRoot;
             } else {
-                //VORHER: cursor->key[cursor->size]
                 insertIntoNode(newKey, findParent(root, cursor), newInternal);
             }
         }
@@ -638,8 +647,7 @@ void threadFunction(BPTree &tree, string name){
 int main(void) {
     BPTree tree;
     // In Baum Keys einfügen
-    //int dataInsert [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
-    int dataInsert [] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42,5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
+    int dataInsert [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
     for (int i : dataInsert){
         tree.insertKey(i);
         cout<<"Insert Key: "<<i<<"\n";
