@@ -1,16 +1,22 @@
 #include <iostream>
 #include <iterator>
 #include <algorithm>
+#include <cstdlib>
+#include <thread>
+#include <mutex>
+#include <functional>
+
 using namespace std;
 
 int order = 2;
 
 // BP node
 class Node {
-   public:
+public:
     int *key, size;
     bool leaf;
     Node **ptr;
+    mutex node_mutex;
 
     Node(){
         key = new int[order];
@@ -32,7 +38,7 @@ class Node {
 
 //BP tree
 class BPTree {
-   public:
+public:
     Node* root;
 
     BPTree(){
@@ -40,12 +46,17 @@ class BPTree {
     }
 
     void insertKey(int key){
+
         //  erstmaliges erstellen von Root;
         if (root == nullptr){
             root = new Node;
+
+            unique_lock<mutex> lock(root->node_mutex);
+
             root->key[0] = key;
             root->size = 1;
             root->leaf = true;
+            return;
         }
         //  Falls root schon existiert wird nach dem ersten leaf geschaut indem die Value eingefügt werden soll
         else{
@@ -68,10 +79,33 @@ class BPTree {
             }
             /*  Wenn noch Platz im Leaf ist und ein Wert größer im Leaf ist, wird für Value platzt gemacht im Node, indem
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
-            if(cursor->size == order && cursor->key[order-1] == key && cursor->key[0] == key){
-                cursor = parent->ptr[leftChild];
+            if(cursor->key[0] == key){
+                if(leftChild != -1){
+                    cursor = parent->ptr[leftChild];
+                }
+                else{
+                    cursor = root;
+                    while (!(cursor->leaf)){
+                        parent = cursor;
+                        for (int i = 0; i < cursor->size; i++){
+                            if (key-1 < cursor->key[i]){
+                                cursor = cursor->ptr[i];
+                                leftChild = i-1;
+                                break;
+                            }
+                            if (i == cursor->size-1){
+                                cursor = cursor->ptr[i+1];
+                                leftChild = i;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             if (cursor->size < order){
+
+                unique_lock<mutex> l1(cursor->node_mutex);
+
                 int i = 0;
                 while(i < cursor->size && cursor->key[i] < key){i++;}
                 for (int j = cursor->size; j > i; j--){
@@ -102,6 +136,10 @@ class BPTree {
                     tempNode[j] = tempNode[j-1];
                 }
                 tempNode[i] = key;
+
+                unique_lock<mutex> l1(cursor->node_mutex);
+                unique_lock<mutex> l2(newLeaf->node_mutex);
+
                 newLeaf->leaf = true;
                 cursor->size = (order+1)/2;
                 newLeaf->size = order+1-(order+1)/2;
@@ -116,6 +154,9 @@ class BPTree {
                 }
                 if(cursor == root){
                     Node *newRoot = new Node;
+
+                    unique_lock<mutex> l3(newRoot->node_mutex);
+
                     newRoot->key[0] = newLeaf->key[0];
                     newRoot->ptr[0] = cursor;
                     newRoot->ptr[1] = newLeaf;
@@ -137,11 +178,14 @@ class BPTree {
         /*  Wenn der Elternknoten noch Platz hat, wird an der passenden stelle die key eingefügt. Das selbe gilt für
          *  die Kinderpointer.
          * */
+
         int newKey = 0;
         if (cursor->size < order) {
             int i = 0;
-            while (key > cursor->key[i] && i < cursor->size)
-                i++;
+            while (key >= cursor->key[i] && i < cursor->size) i++;
+
+            unique_lock<mutex> l1(cursor->node_mutex);
+
             for (int j = cursor->size; j > i; j--) {
                 cursor->key[j] = cursor->key[j - 1];
             }
@@ -161,9 +205,11 @@ class BPTree {
         else {
             Node *newInternal = new Node;
             int virtualKey[order + 1];
+            int virtualKeyCopy[order+1];
             Node *virtualPtr[order + 2];
             for (int i = 0; i < order; i++) {
                 virtualKey[i] = cursor->key[i];
+                virtualKeyCopy[i] = cursor->key[i];
             }
             for (int i = 0; i < order + 1; i++) {
                 virtualPtr[i] = cursor->ptr[i];
@@ -173,19 +219,28 @@ class BPTree {
                 i++;
             for (int j = order + 1; j > i; j--) {
                 virtualKey[j] = virtualKey[j - 1];
+                virtualKeyCopy[j] = virtualKeyCopy[j - 1];
             }
             virtualKey[i] = key;
+            virtualKeyCopy[i] = key;
+
             //WICHTIGE STELLE MIT DEM NEWKEY
-            newKey = virtualKey[(order + 1)/2];
+            newKey = virtualKeyCopy[(order + 1)/2];
+
 
             for (int j = order + 2; j > i + 1; j--) {
                 virtualPtr[j] = virtualPtr[j - 1];
             }
             virtualPtr[i + 1] = child;
-            newInternal->leaf = false;
-            cursor->size = (order + 1) / 2;
-            newInternal->size = order - (order + 1) / 2;
 
+            unique_lock<mutex> l1(cursor->node_mutex);
+
+            cursor->size = (order + 1) / 2;
+
+            unique_lock<mutex> l2(newInternal->node_mutex);
+
+            newInternal->leaf = false;
+            newInternal->size = order - (order + 1) / 2;
             for (i = 0, j = cursor->size + 1; i < newInternal->size; i++, j++) {
                 newInternal->key[i] = virtualKey[j];
             }
@@ -194,6 +249,8 @@ class BPTree {
             }
             if (cursor == root) {
                 Node *newRoot = new Node;
+
+                unique_lock<mutex> l3(newRoot->node_mutex);
                 newRoot->key[0] = cursor->key[cursor->size];
                 newRoot->ptr[0] = cursor;
                 newRoot->ptr[1] = newInternal;
@@ -201,6 +258,7 @@ class BPTree {
                 newRoot->size = 1;
                 root = newRoot;
             } else {
+                //VORHER: cursor->key[cursor->size]
                 insertIntoNode(newKey, findParent(root, cursor), newInternal);
             }
         }
@@ -560,18 +618,38 @@ class BPTree {
 
 };
 
+void threadFunction(BPTree &tree, string name){
+    int dataT1[] = {1,10,20,30,40,50,60,70,80,90,88,77,66,55,44,33,22,11};
+    int dataT2[] = {97,86,75,6,64,53,42,31,21,7};
+    if(name == "T1"){
+        for(int i = 0; i < 18; i++){
+            tree.insertKey(dataT1[i]);
+            cout<<name <<" inserted Key: "<< dataT1[i] <<"\n";
+        }
+    }
+    else{
+        for(int i = 0; i < 10; i++){
+            tree.insertKey(dataT2[i]);
+            cout<<name <<" inserted Key: "<< dataT1[i] <<"\n";
+        }
+    }
+}
+
 int main(void) {
     BPTree tree;
     // In Baum Keys einfügen
-    int dataInsert [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
+    //int dataInsert [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
+    int dataInsert [] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42,5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
     for (int i : dataInsert){
         tree.insertKey(i);
+        cout<<"Insert Key: "<<i<<"\n";
+        tree.printTree();
     }
     tree.printTree();
     // Aus Baum Keys entfernen
     int dataDelete[] = {5,42,30,15};
     for (int i : dataDelete){
-        cout<< "Try to delete Key: "<<i<<"\n\n";
+        cout<< "Try to delete Key: "<<i<<"\n";
         tree.deleteKey(i);
     }
     tree.printTree();
@@ -588,5 +666,16 @@ int main(void) {
             cout<<"Key: "<< i << " not Found!\n\n";
         }
     }
+    BPTree treeThread;
+    thread t1([&treeThread] { return threadFunction(treeThread, "T1"); });
+    thread t2([&treeThread] { return threadFunction(treeThread, "T2"); });
+    t1.join();
+    t2.join();
+    treeThread.printTree();
+    /*for(int i = 0; i < 10;i++){
+        int  a = rand() % 100 + 1;
+        treeThread.deleteKey(a);
+    }
+    treeThread.printTree()*/
     return 0;
 }
