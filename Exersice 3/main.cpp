@@ -41,13 +41,17 @@ public:
 class BPTree {
 public:
     Node* root;
-
+    int test;
     BPTree(){
         root = nullptr;
+        test = 0;
     }
 
     void insertKey(int key){
-
+        if(key == 8){
+            //3mal
+            test ++;
+        }
         //  erstmaliges erstellen von Root;
         if (root == nullptr){
             root = new Node;
@@ -80,9 +84,13 @@ public:
             }
             /*  Wenn noch Platz im Leaf ist und ein Wert größer im Leaf ist, wird für Value platzt gemacht im Node, indem
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
-            if(cursor->key[0] == key){
+            if(cursor->key[0] == key && cursor->size == order){
                 if(leftChild != -1){
-                    cursor = parent->ptr[leftChild];
+                    //TODO: SEARCH ALTERNATIVE FUNCTION EINFÜGEN
+                    cursor = searchAlternativeNode(key);
+                    if(cursor == nullptr){
+                        cursor = parent->ptr[leftChild];
+                    }
                 }
                 else{
                     cursor = root;
@@ -183,19 +191,21 @@ public:
         int newKey = 0;
         if (cursor->size < order) {
             int i = 0;
-            while (key >= cursor->key[i] && i < cursor->size) i++;
+            while (key > cursor->key[i] && i < cursor->size){
+                i++;
+            }
 
             unique_lock<mutex> l1(cursor->node_mutex);
 
             for (int j = cursor->size; j > i; j--) {
                 cursor->key[j] = cursor->key[j - 1];
             }
-            for (int j = cursor->size + 1; j > i + 1; j--) {
-                cursor->ptr[j] = cursor->ptr[j - 1];
+            for (int j = cursor->size+1; j > i + 1; j--) {
+                cursor->ptr[j] = cursor->ptr[j-1];
             }
             cursor->key[i] = key;
             cursor->size++;
-            cursor->ptr[i + 1] = child;
+            cursor->ptr[i+1] = child;
         }
         /*  Ähnlich zur insertKey funktion wird andernfalls ein Temporäres Node element erstellt, welches den key mit dem child
          *  an der richtigen stelle einfügt und danach getrennt wird. Sonst verhält sich der Alg. gleich.
@@ -262,7 +272,7 @@ public:
                 Node *newRoot = new Node;
 
                 unique_lock<mutex> l3(newRoot->node_mutex);
-                newRoot->key[0] = cursor->key[cursor->size];
+                newRoot->key[0] = newKey;
                 newRoot->ptr[0] = cursor;
                 newRoot->ptr[1] = newInternal;
                 newRoot->leaf = false;
@@ -273,6 +283,31 @@ public:
             }
         }
     }
+
+    Node* searchAlternativeNode(int key){
+        Node *cursor = root, *parent;
+        int rightChild, leftChild;
+        while (!(cursor->leaf)){
+            parent = cursor;
+            for (int i = 0; i < cursor->size; i++){
+                if (key - 1 < cursor->key[i]){
+                    cursor = cursor->ptr[i];
+                    rightChild = i+1;
+                    break;
+                }
+                if (i == cursor->size-1){
+                    cursor = cursor->ptr[i+1];
+                    rightChild = i+2;
+                    break;
+                }
+            }
+        }
+        if(rightChild <= parent->size && parent->ptr[rightChild]->size < order){
+            return parent->ptr[rightChild];
+        }
+        return nullptr;
+    }
+
 
     Node* findParent(Node *cursor, Node *child){
         Node *parent;
@@ -627,12 +662,16 @@ public:
     }
 
 };
-
-void threadFunction(BPTree &tree){
-    for(int i = 0; i < 20; i++){
+mutex test;
+void threadFunction(BPTree *tree){
+    for(int i = 0; i < 100; i++){
         int a = rand() % 100 + 1;
-        tree.insertKey(a);
-        this_thread::sleep_for(chrono::nanoseconds(100));
+        test.lock();
+        tree->insertKey(a);
+        cout << "Inserted: "<<a<<"\n";
+        tree->printTree();
+        test.unlock();
+        this_thread::sleep_for(chrono::nanoseconds(500));
     }
 }
 
@@ -666,10 +705,12 @@ int main(void) {
         }
     }
     BPTree treeThread;
-    thread t1([&treeThread] { return threadFunction(treeThread); });
-    thread t2([&treeThread] { return threadFunction(treeThread); });
-    t1.join();
-    t2.join();
+    //thread t1([&treeThread] { return threadFunction(&treeThread); });
+    //thread t2([&treeThread] { return threadFunction(&treeThread); });
+    //t1.join();
+    //t2.join();
+    threadFunction(&treeThread);
+    threadFunction(&treeThread);
     treeThread.printTree();
     /*for(int i = 0; i < 10;i++){
         int  a = rand() % 100 + 1;
