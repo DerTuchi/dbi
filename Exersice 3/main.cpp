@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include <functional>
+#include <chrono>
 
 using namespace std;
 
@@ -627,20 +628,11 @@ public:
 
 };
 
-void threadFunction(BPTree &tree, string name){
-    int dataT1[] = {1,10,20,30,40,50,60,70,80,90,88,77,66,55,44,33,22,11};
-    int dataT2[] = {97,86,75,6,64,53,42,31,21,7};
-    if(name == "T1"){
-        for(int i = 0; i < 18; i++){
-            tree.insertKey(dataT1[i]);
-            cout<<name <<" inserted Key: "<< dataT1[i] <<"\n";
-        }
-    }
-    else{
-        for(int i = 0; i < 10; i++){
-            tree.insertKey(dataT2[i]);
-            cout<<name <<" inserted Key: "<< dataT1[i] <<"\n";
-        }
+void threadFunction(BPTree &tree){
+    for(int i = 0; i < 20; i++){
+        int a = rand() % 100 + 1;
+        tree.insertKey(a);
+        this_thread::sleep_for(chrono::nanoseconds(100));
     }
 }
 
@@ -651,7 +643,6 @@ int main(void) {
     for (int i : dataInsert){
         tree.insertKey(i);
         cout<<"Insert Key: "<<i<<"\n";
-        tree.printTree();
     }
     tree.printTree();
     // Aus Baum Keys entfernen
@@ -675,8 +666,8 @@ int main(void) {
         }
     }
     BPTree treeThread;
-    thread t1([&treeThread] { return threadFunction(treeThread, "T1"); });
-    thread t2([&treeThread] { return threadFunction(treeThread, "T2"); });
+    thread t1([&treeThread] { return threadFunction(treeThread); });
+    thread t2([&treeThread] { return threadFunction(treeThread); });
     t1.join();
     t2.join();
     treeThread.printTree();
