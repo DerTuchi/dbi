@@ -326,7 +326,8 @@ public:
             cout<<"Tree is Empty\n";
         }
         int maxDepth = 0, currentDepth = 0;
-        Node *cursor = root;
+        Node *cursor = new Node;
+        cursor = root;
         while(!cursor->leaf){
             cursor = cursor->ptr[0];
             maxDepth ++;
@@ -336,7 +337,6 @@ public:
                 cout<<"\n\n";
                 currentDepth ++;
         }
-        cout<<"--------------------------------------------------------------------------------------\n";
     }
 
     Node *searchTree(int key){
@@ -367,8 +367,9 @@ public:
     }
 
     void deleteKey(int key){
-        if(key == 45){
-            key = 45;
+        cout<< "Try to delete Key: "<<key<<"\n";
+        if(key == 56){
+            key = 56;
         }
 
         int threshhold = ((order/2) + 0.5) - 1;
@@ -384,12 +385,6 @@ public:
             return;
         }
         cursor = root;
-        for (int i = 0; i < cursor->size; i++){
-            if (cursor->key[i] == key){
-                parent = cursor;
-                condition = false;
-            }
-        }
         while (condition){
             parent = cursor;
             for (int i = 0; i < cursor->size; i++){
@@ -525,13 +520,7 @@ public:
             }
 
             //Wert aus Parent entfernen
-            int parentKeyLocation = 0;
-            for(parentKeyLocation; parentKeyLocation < parent->size; parentKeyLocation++){
-                if(parent->key[parentKeyLocation] == parent->key[mergePartner -1]){
-                    break;
-                }
-            }
-            for(parentKeyLocation; parentKeyLocation < parent->size; parentKeyLocation ++){
+            for(int parentKeyLocation = mergePartner -1; parentKeyLocation < parent->size; parentKeyLocation ++){
                 parent->key[parentKeyLocation] = parent->key[parentKeyLocation+1];
             }
             parent->size --;
@@ -594,6 +583,7 @@ public:
             }
             for(int i = parentKeyLocation; i < parent->size + 1; i ++){
                 parent->ptr[i] = parent->ptr[i+1];
+                if(i == parent->size) parent->ptr[i] = nullptr;
             }
             parent->size --;
 
@@ -612,11 +602,10 @@ public:
         }
         cursor->size = cursor->size + child->size;
 
-        /*Löschen des childs
+        /*Löschen des childs PS:Macht irgendwie alles kaputt
         delete[] child->key;
         delete[] child->ptr;
-        delete child;
-        */
+        delete child;*/
 
         //Wenn Parent Root ist und size = 0, wird cursor zum root
         if(parent == root && parent->size == 0){
@@ -649,27 +638,34 @@ public:
     }
 
 };
-
-void threadFunction(BPTree *tree, int seed){
-    srand(time(0) + seed);
+void threadFunction(BPTree *tree, int seed, int thread){
+    int t = 1675124498;
+    srand(t + seed);
     for(int i = 0; i < 100; i++){
         int a = rand() % 100 + 1;
         tree->mutexTree.lock();
         tree->insertKey(a);
         tree->mutexTree.unlock();
+        this_thread::sleep_for(chrono::nanoseconds(2000));
     }
     for(int i = 0; i < 10; i++){
         int a = rand() % 100 +1;
         tree->mutexTree.lock();
+        cout<<"Thread: "<<thread<<" Seed: "<< t <<"\n";
         cout<<"Try to delete Key: " << a << "\n";
+        tree->printTree();
         tree->deleteKey(a);
         tree->mutexTree.unlock();
+        this_thread::sleep_for(chrono::nanoseconds(2000));
     }
 }
 
 int main(void) {
     BPTree tree;
     // In Baum Keys einfügen
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
+    cout<<"\t\t\tInsert Part\n";
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
     int dataInsert [17] = {5, 15, 25, 35, 45, 55, 40, 30, 20, 36, 42, 39, 52, 46, 38, 42, 42};
     for (int i : dataInsert){
         tree.insertKey(i);
@@ -677,13 +673,18 @@ int main(void) {
     }
     tree.printTree();
     // Aus Baum Keys entfernen
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
+    cout<<"\t\t\tDelete Part\n";
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
     int dataDelete[] = {5,42,30,15};
     for (int i : dataDelete){
-        cout<< "Try to delete Key: "<<i<<"\n";
         tree.deleteKey(i);
     }
     tree.printTree();
     // Suchen, ob im Baum vorhanden
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
+    cout<<"\t\t\tSearch Part\n";
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
     int dataSearch[] = {42,30,55,100,40,25};
     for(int i : dataSearch){
         Node * result = tree.searchTree(i);
@@ -696,12 +697,18 @@ int main(void) {
             cout<<"Key: "<< i << " not Found!\n\n";
         }
     }
-    cout<<"\n\n\nThreading Part\n\n";
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
+    cout<<"\t\t\tThreading Part\n";
+    cout<<"-----------------------------------------------------------------------------------------------------------\n";
     BPTree treeThread;
-    thread t1([&treeThread] { return threadFunction(&treeThread, 10); });
-    thread t2([&treeThread] { return threadFunction(&treeThread, 3*10^5+1); });
+    thread t1([&treeThread] { return threadFunction(&treeThread, 3*10^5+1, 1); });
+    thread t2([&treeThread] { return threadFunction(&treeThread, 10, 2); });
+    thread t3([&treeThread] { return threadFunction(&treeThread, 7*10^5+1, 3); });
+    thread t4([&treeThread] { return threadFunction(&treeThread, 2*10^5+1, 4); });
     t1.join();
     t2.join();
+    t3.join();
+    t4.join();
     treeThread.printTree();
     return 0;
 }
