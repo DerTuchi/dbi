@@ -17,7 +17,6 @@ public:
     int *key, size;
     bool leaf;
     Node **ptr;
-    mutex node_mutex;
 
     Node(){
         key = new int[order];
@@ -41,23 +40,15 @@ public:
 class BPTree {
 public:
     Node* root;
-    int test;
+    mutex mutexTree;
     BPTree(){
         root = nullptr;
-        test = 0;
     }
 
     void insertKey(int key){
-        if(key == 8){
-            //3mal
-            test ++;
-        }
         //  erstmaliges erstellen von Root;
         if (root == nullptr){
             root = new Node;
-
-            unique_lock<mutex> lock(root->node_mutex);
-
             root->key[0] = key;
             root->size = 1;
             root->leaf = true;
@@ -86,7 +77,6 @@ public:
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
             if(cursor->key[0] == key && cursor->size == order){
                 if(leftChild != -1){
-                    //TODO: SEARCH ALTERNATIVE FUNCTION EINFÜGEN
                     cursor = searchAlternativeNode(key);
                     if(cursor == nullptr){
                         cursor = parent->ptr[leftChild];
@@ -112,9 +102,6 @@ public:
                 }
             }
             if (cursor->size < order){
-
-                unique_lock<mutex> l1(cursor->node_mutex);
-
                 int i = 0;
                 while(i < cursor->size && cursor->key[i] < key){i++;}
                 for (int j = cursor->size; j > i; j--){
@@ -145,10 +132,6 @@ public:
                     tempNode[j] = tempNode[j-1];
                 }
                 tempNode[i] = key;
-
-                unique_lock<mutex> l1(cursor->node_mutex);
-                unique_lock<mutex> l2(newLeaf->node_mutex);
-
                 newLeaf->leaf = true;
                 cursor->size = (order+1)/2;
                 newLeaf->size = order+1-(order+1)/2;
@@ -163,9 +146,6 @@ public:
                 }
                 if(cursor == root){
                     Node *newRoot = new Node;
-
-                    unique_lock<mutex> l3(newRoot->node_mutex);
-
                     newRoot->key[0] = newLeaf->key[0];
                     newRoot->ptr[0] = cursor;
                     newRoot->ptr[1] = newLeaf;
@@ -194,9 +174,6 @@ public:
             while (key > cursor->key[i] && i < cursor->size){
                 i++;
             }
-
-            unique_lock<mutex> l1(cursor->node_mutex);
-
             for (int j = cursor->size; j > i; j--) {
                 cursor->key[j] = cursor->key[j - 1];
             }
@@ -257,15 +234,9 @@ public:
                 }
                 virtualPtr[i + 1] = child;
             }
-            unique_lock<mutex> l1(cursor->node_mutex);
-
             cursor->size = (order + 1) / 2;
-
-            unique_lock<mutex> l2(newInternal->node_mutex);
-
             newInternal->leaf = false;
             newInternal->size = order - (order + 1) / 2;
-
             if(cursor->key[0] != virtualKey[0]){
                 for(i = 0; i < cursor->size; i++){
                     cursor->key[i] = virtualKey[i];
@@ -283,8 +254,6 @@ public:
             }
             if (cursor == root) {
                 Node *newRoot = new Node;
-
-                unique_lock<mutex> l3(newRoot->node_mutex);
                 newRoot->key[0] = newKey;
                 newRoot->ptr[0] = cursor;
                 newRoot->ptr[1] = newInternal;
@@ -398,6 +367,10 @@ public:
     }
 
     void deleteKey(int key){
+        if(key == 45){
+            key = 45;
+        }
+
         int threshhold = ((order/2) + 0.5) - 1;
         if(threshhold <= 0){
             threshhold = 1;
@@ -407,7 +380,7 @@ public:
         bool condition = true;
         int leftSibling = 0, rightSibling = 0;
         if (cursor == nullptr){
-            cout<<key<<" not in Tree";
+            cout<<key<<" not in Tree\n";
             return;
         }
         cursor = root;
@@ -639,10 +612,11 @@ public:
         }
         cursor->size = cursor->size + child->size;
 
-        //Löschen des childs
+        /*Löschen des childs
         delete[] child->key;
         delete[] child->ptr;
         delete child;
+        */
 
         //Wenn Parent Root ist und size = 0, wird cursor zum root
         if(parent == root && parent->size == 0){
@@ -675,16 +649,21 @@ public:
     }
 
 };
-mutex test;
-void threadFunction(BPTree *tree){
+
+void threadFunction(BPTree *tree, int seed){
+    srand(time(0) + seed);
     for(int i = 0; i < 100; i++){
         int a = rand() % 100 + 1;
-        test.lock();
+        tree->mutexTree.lock();
         tree->insertKey(a);
-        cout << "Inserted: "<<a<<"\n";
-        tree->printTree();
-        test.unlock();
-        this_thread::sleep_for(chrono::nanoseconds(500));
+        tree->mutexTree.unlock();
+    }
+    for(int i = 0; i < 10; i++){
+        int a = rand() % 100 +1;
+        tree->mutexTree.lock();
+        cout<<"Try to delete Key: " << a << "\n";
+        tree->deleteKey(a);
+        tree->mutexTree.unlock();
     }
 }
 
@@ -717,18 +696,12 @@ int main(void) {
             cout<<"Key: "<< i << " not Found!\n\n";
         }
     }
+    cout<<"\n\n\nThreading Part\n\n";
     BPTree treeThread;
-    //thread t1([&treeThread] { return threadFunction(&treeThread); });
-    //thread t2([&treeThread] { return threadFunction(&treeThread); });
-    //t1.join();
-    //t2.join();
-    threadFunction(&treeThread);
-    threadFunction(&treeThread);
+    thread t1([&treeThread] { return threadFunction(&treeThread, 10); });
+    thread t2([&treeThread] { return threadFunction(&treeThread, 3*10^5+1); });
+    t1.join();
+    t2.join();
     treeThread.printTree();
-    /*for(int i = 0; i < 10;i++){
-        int  a = rand() % 100 + 1;
-        treeThread.deleteKey(a);
-    }
-    treeThread.printTree()*/
     return 0;
 }
