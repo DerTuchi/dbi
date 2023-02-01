@@ -10,13 +10,14 @@
 using namespace std;
 
 int order = 2;
-
+int incr = 0;
 // BP node
 class Node {
 public:
     int *key, size;
     bool leaf;
     Node **ptr;
+    int id;
 
     Node(){
         key = new int[order];
@@ -24,11 +25,13 @@ public:
         for (int i = 0; i < order+1;i++){
             ptr[i] = nullptr;
         }
+        id = incr;
+        incr ++;
     };
 
 
     void printNode(){
-        cout<<"| ";
+        cout<<"0."<<id<<"| ";
         for (int i=0; i < size; i++){
             cout<< key[i] <<" | ";
         }
@@ -41,8 +44,10 @@ class BPTree {
 public:
     Node* root;
     mutex mutexTree;
+    int count;
     BPTree(){
         root = nullptr;
+        count = 0;
     }
 
     void insertKey(int key){
@@ -66,8 +71,8 @@ public:
                         leftChild = i-1;
                         break;
                     }
-                    if (i == cursor->size-1){
-                        cursor = cursor->ptr[i+1];
+                    if (i == cursor->size -1){
+                        cursor = cursor->ptr[i + 1];
                         leftChild = i;
                         break;
                     }
@@ -75,31 +80,17 @@ public:
             }
             /*  Wenn noch Platz im Leaf ist und ein Wert größer im Leaf ist, wird für Value platzt gemacht im Node, indem
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
+            while(cursor != root && leftChild > -1 && parent->ptr[leftChild]->key[parent->ptr[leftChild]->size - 1] > key){
+                cursor = parent->ptr[leftChild];
+                leftChild--;
+            }
             if(cursor->key[0] == key && cursor->size == order){
-                if(leftChild != -1){
-                    cursor = searchAlternativeNode(key);
-                    if(cursor == nullptr){
-                        cursor = parent->ptr[leftChild];
-                    }
+                Node *temp = cursor;
+                for(int i = parent->size; i > 0;i--){
+                    if(parent->ptr[i]->size < order && key > parent->ptr[i]->key[parent->ptr[i]->size-1]) cursor = parent->ptr[i];
                 }
-                else{
-                    cursor = root;
-                    while (!(cursor->leaf)){
-                        parent = cursor;
-                        for (int i = 0; i < cursor->size; i++){
-                            if (key-1 < cursor->key[i]){
-                                cursor = cursor->ptr[i];
-                                leftChild = i-1;
-                                break;
-                            }
-                            if (i == cursor->size-1){
-                                cursor = cursor->ptr[i+1];
-                                leftChild = i;
-                                break;
-                            }
-                        }
-                    }
-                }
+                if(cursor->size == order) cursor = searchAlternativeNode(key);
+                if(cursor == nullptr) cursor = temp;
             }
             if (cursor->size < order){
                 int i = 0;
@@ -215,8 +206,11 @@ public:
                 virtualPtrCopy[i] = cursor->ptr[i];
             }
             int i = 0, j;
-            while (key > virtualKey[i] && i < order)
-                i++;
+            if(virtualPtrCopy[order]->key[virtualPtrCopy[order]->size-1] < child->key[child->size-1]) i = order;
+            else{
+                while (key > virtualKey[i] && i < order)i++;
+                if(key == virtualKey[0]) i = 1;
+            }
             for (int j = order + 1; j > i; j--) {
                 virtualKey[j] = virtualKey[j - 1];
                 virtualKeyCopy[j] = virtualKeyCopy[j - 1];
@@ -227,16 +221,15 @@ public:
             //WICHTIGE STELLE MIT DEM NEWKEY
             newKey = virtualKeyCopy[(order + 1)/2];
 
-            if(virtualPtrCopy[order]->key[virtualPtrCopy[order]->size-1] < child->key[child->size-1]) virtualPtr[order+1] = child;
-            else{
-                for (int j = order + 2; j > i + 1; j--) {
-                    virtualPtr[j] = virtualPtr[j - 1];
-                }
-                virtualPtr[i + 1] = child;
+            for (int j = order + 2; j > i + 1; j--) {
+                virtualPtr[j] = virtualPtr[j - 1];
             }
+            virtualPtr[i + 1] = child;
+
             cursor->size = (order + 1) / 2;
             newInternal->leaf = false;
             newInternal->size = order - (order + 1) / 2;
+
             if(cursor->key[0] != virtualKey[0]){
                 for(i = 0; i < cursor->size; i++){
                     cursor->key[i] = virtualKey[i];
@@ -268,7 +261,7 @@ public:
 
     Node* searchAlternativeNode(int key){
         Node *cursor = root, *parent;
-        int rightChild, leftChild;
+        int rightChild;
         while (!(cursor->leaf)){
             parent = cursor;
             for (int i = 0; i < cursor->size; i++){
@@ -279,7 +272,7 @@ public:
                 }
                 if (i == cursor->size-1){
                     cursor = cursor->ptr[i+1];
-                    rightChild = i+2;
+                    rightChild = i+1;
                     break;
                 }
             }
@@ -310,7 +303,7 @@ public:
     }
 
     void nodesPerDepth(Node * node, int depthCurrent, int depth){
-            if(depthCurrent != depth) {
+        if(depthCurrent != depth) {
                 for (int i = 0; i < node->size+1;i++){
                     nodesPerDepth(node->ptr[i], depthCurrent + 1, depth);
                 }
@@ -318,7 +311,6 @@ public:
                 node->printNode();
                 return;
             }
-
     }
 
     void printTree(){
@@ -334,7 +326,7 @@ public:
         }
         while(currentDepth <= maxDepth){
             nodesPerDepth(root, 0, currentDepth);
-                cout<<"\n\n";
+                cout<<"\n\n\n";
                 currentDepth ++;
         }
     }
@@ -368,8 +360,9 @@ public:
 
     void deleteKey(int key){
         cout<< "Try to delete Key: "<<key<<"\n";
-        if(key == 56){
-            key = 56;
+        if(key == 34) count++;
+        if(count == 1){
+            bool a = false;
         }
 
         int threshhold = ((order/2) + 0.5) - 1;
@@ -423,92 +416,26 @@ public:
         if (cursor->size < threshhold){
             if(rightSibling <= cursor->size + 1){
                 if(!getKeyFromSibling(parent, cursor, rightSibling, false)){
-                    mergeNodes(key, parent,cursor, rightSibling);
+                    mergeNodes(parent,cursor, rightSibling, true);
                 }
             }
             else if(leftSibling >= 0){
                 if(!getKeyFromSibling(parent, cursor, leftSibling, true)){
-                    mergeNodes(parent->ptr[leftSibling]->key[parent->ptr[leftSibling]->size-1], parent,cursor, leftSibling);
+                    mergeNodes(parent,cursor, leftSibling, false);
                 }
 
             }
         }
     }
 
-    bool getKeyFromSibling(Node *parent, Node* cursor, int sibling, bool leftSibling){
-        int threshhold = ((order/2) + 0.5) - 1;
-        if(threshhold <= 0){
-            threshhold = 1;
-        }
-        Node *child = parent->ptr[sibling];
-        // Rechtes Node ein Element nehmen
-        if(!leftSibling &&child->size > threshhold){
-            // Falls der Parent einen anderen Wert hat, muss dieser beim Klauen des nachbarn berücksichtigt werden
-            if(parent->key[sibling-1] != child->key[0]){
-                cursor->key[cursor->size] = parent->key[sibling-1];
-                parent->key[sibling-1] = child->key[0];
-                for (int i = 0; i < child->size; i ++){
-                    child->key[i] = child->key[i+1];
-                }
-                cursor->ptr[cursor->size + 1] = child->ptr[0];
-                for(int i = 0; i < child->size + 1; i ++){
-                    child->ptr[i] = child->ptr[i+1];
-                }
-                child->size--;
-                cursor->size ++;
-            }
-            // Andernfalls kann man die Werte einfach Klauen und Löschen
-            else{
-                cursor->key[cursor->size] = child->key[0];
-                cursor->size ++;
-                for (int i = 0; i < child->size; i ++){
-                    child->key[i] = child->key[i+1];
-                }
-                child->size--;
-                parent->key[sibling - 2] = cursor->key[0];
-                parent->key[sibling - 1] = child->key[0];
-            }
-            return true;
-        }
-        // Linkes Node ein element nehmen
-        else if(leftSibling && child->size > threshhold){
-            // Falls der Parent einen anderen Wert hat, muss dieser beim Klauen des nachbarn berücksichtigt werden
-            if(parent->key[sibling] != cursor->key[0]){
-                for(int i = 0; i < cursor->size; i ++){
-                    cursor->key[i] = cursor->key[i+1];
-                }
-                cursor->key[0] = parent->key[sibling];
-                parent->key[sibling] = child->key[child->size];
-                for(int i = 0; i < cursor->size + 1; i ++){
-                    cursor->ptr[i] = cursor->ptr[i+1];
-                }
-                cursor->ptr[0] = child->ptr[child->size + 1];
-                child->size --;
-                cursor->size ++;
-            }
-            // Andernfalls kann man die Werte einfach Klauen und Löschen
-            else{
-                for(int i = cursor->size; i > 0; i --){
-                    cursor->key[i] = cursor->key[i-1];
-                }
-                cursor->key[0] = child->key[child->size-1];
-                cursor->size ++;
-                child->size --;
-                parent->key[sibling] = cursor->key[0];
-            }
-            return true;
-        }
-        return false;
-    }
-
-    void mergeNodes(int key, Node *parent, Node *cursor, int mergePartner){
+    void mergeNodes(Node *parent, Node *cursor, int mergePartner, bool sideIsRight){
         int threshhold = ((order/2) + 0.5) - 1;
         if(threshhold <= 0){
             threshhold = 1;
         }
         Node * child = parent->ptr[mergePartner];
         //child ist rechts
-        if(key < child->key[0]){
+        if(sideIsRight){
             //Schauen ob der Parent beim Merge einen anderen Wert hat und ggf mit einbeziehen
             if(child->key[0]!=parent->key[mergePartner - 1]){
                 //Wert in Child einfügen
@@ -523,8 +450,16 @@ public:
             for(int parentKeyLocation = mergePartner -1; parentKeyLocation < parent->size; parentKeyLocation ++){
                 parent->key[parentKeyLocation] = parent->key[parentKeyLocation+1];
             }
+            for(int i = mergePartner; i < parent->size + 1; i ++){
+                if(i == parent->size){
+                    parent->ptr[i] = nullptr;
+                    break;
+                }
+                parent->ptr[i] = parent->ptr[i+1];
+            }
             parent->size --;
 
+            
             // Wenn es kein Leaf ist, sollen auch die Pointer mit gemerged werden
             if(!cursor->leaf){
                for(int i = 0; i < child->size + 1; i++){
@@ -572,18 +507,12 @@ public:
                 }
             }
             //Wert aus Parent entfernen
-            int parentKeyLocation = 0;
-            for(parentKeyLocation; parentKeyLocation < parent->size; parentKeyLocation++){
-                if(parent->key[parentKeyLocation] == parent->key[mergePartner]){
-                    break;
+            for(int i = mergePartner; i < parent->size + 1; i ++){
+                if(i == parent->size){
+                    parent->ptr[i] = nullptr;
+                     break;
                 }
-            }
-            for(int i = parentKeyLocation; i < parent->size; i ++){
-                parent->key[i] = parent->key[i + 1];
-            }
-            for(int i = parentKeyLocation; i < parent->size + 1; i ++){
                 parent->ptr[i] = parent->ptr[i+1];
-                if(i == parent->size) parent->ptr[i] = nullptr;
             }
             parent->size --;
 
@@ -629,21 +558,89 @@ public:
             }
 
             if(rightAsChild && !getKeyFromSibling(newParent, parent, right, leftAsChild)){
-                mergeNodes(parent->key[parent->size - 1], newParent, parent, right);
+                mergeNodes(newParent, parent, right, true);
             }
             else if(leftAsChild && !getKeyFromSibling(newParent, parent, left, leftAsChild)){
-                mergeNodes(newParent->ptr[left]->key[newParent->ptr[left]->size-1], newParent, parent, left);
+                mergeNodes(newParent, parent, left, false);
             }
         }
     }
 
+    bool getKeyFromSibling(Node *parent, Node* cursor, int sibling, bool leftSibling){
+        int threshhold = ((order/2) + 0.5) - 1;
+        if(threshhold <= 0){
+            threshhold = 1;
+        }
+        Node *child = parent->ptr[sibling];
+        // Rechtes Node ein Element nehmen
+        if(!leftSibling && child->size > threshhold){
+            // Falls der Parent einen anderen Wert hat, muss dieser beim Klauen des nachbarn berücksichtigt werden
+            if(parent->key[sibling-1] != child->key[0]){
+                cursor->key[cursor->size] = parent->key[sibling-1];
+                parent->key[sibling-1] = child->key[0];
+                for (int i = 0; i < child->size; i ++){
+                    child->key[i] = child->key[i+1];
+                }
+                cursor->ptr[cursor->size + 1] = child->ptr[0];
+                for(int i = 0; i < child->size + 1; i ++){
+                    child->ptr[i] = child->ptr[i+1];
+                }
+                child->size--;
+                cursor->size ++;
+            }
+                // Andernfalls kann man die Werte einfach Klauen und Löschen
+            else{
+                cursor->key[cursor->size] = child->key[0];
+                cursor->size ++;
+                for (int i = 0; i < child->size; i ++){
+                    child->key[i] = child->key[i+1];
+                }
+                child->size--;
+                parent->key[sibling - 1] = child->key[0];
+            }
+            return true;
+        }
+            // Linkes Node ein element nehmen
+        else if(leftSibling && child->size > threshhold){
+            // Falls der Parent einen anderen Wert hat, muss dieser beim Klauen des nachbarn berücksichtigt werden
+            if(parent->key[sibling] != cursor->key[0]){
+                for(int i = 0; i < cursor->size; i ++){
+                    cursor->key[i] = cursor->key[i+1];
+                }
+                cursor->key[0] = parent->key[sibling];
+                parent->key[sibling] = child->key[child->size];
+                for(int i = 0; i < cursor->size + 1; i ++){
+                    cursor->ptr[i] = cursor->ptr[i+1];
+                }
+                cursor->ptr[0] = child->ptr[child->size + 1];
+                child->size --;
+                cursor->size ++;
+            }
+                // Andernfalls kann man die Werte einfach Klauen und Löschen
+            else{
+                for(int i = cursor->size; i > 0; i --){
+                    cursor->key[i] = cursor->key[i-1];
+                }
+                cursor->key[0] = child->key[child->size-1];
+                cursor->size ++;
+                child->size --;
+                parent->key[sibling] = cursor->key[0];
+            }
+            return true;
+        }
+        return false;
+    }
+
 };
+vector<int> dataVector;
+vector<int> deleteVector;
 void threadFunction(BPTree *tree, int seed, int thread){
-    int t = 1675124498;
+    int t = time(0);
     srand(t + seed);
     for(int i = 0; i < 100; i++){
         int a = rand() % 100 + 1;
         tree->mutexTree.lock();
+        dataVector.push_back(a);
         tree->insertKey(a);
         tree->mutexTree.unlock();
         this_thread::sleep_for(chrono::nanoseconds(2000));
@@ -651,8 +648,18 @@ void threadFunction(BPTree *tree, int seed, int thread){
     for(int i = 0; i < 10; i++){
         int a = rand() % 100 +1;
         tree->mutexTree.lock();
+        deleteVector.push_back(a);
         cout<<"Thread: "<<thread<<" Seed: "<< t <<"\n";
-        cout<<"Try to delete Key: " << a << "\n";
+        cout<<"Try to delete Key: " << a << "\n\n";
+        cout <<"Data: ";
+        for(int b : dataVector){
+            cout << b <<", ";
+        }
+        cout<<"\nDelete: ";
+        for(int b: deleteVector){
+            cout << b << ", ";
+        }
+        cout<<"\n";
         tree->printTree();
         tree->deleteKey(a);
         tree->mutexTree.unlock();
@@ -701,6 +708,16 @@ int main(void) {
     cout<<"\t\t\tThreading Part\n";
     cout<<"-----------------------------------------------------------------------------------------------------------\n";
     BPTree treeThread;
+    int data [] = {40, 16, 14, 61, 6, 87, 98, 20, 72, 71, 31, 76, 50, 100, 86, 61, 95, 59, 64, 31, 55, 76, 93, 92, 100, 24, 21, 8, 89, 46, 32, 20, 58, 71, 68, 85, 54, 5, 16, 24, 33, 8, 92, 82, 38, 69, 93, 36, 57, 71, 72, 57, 46, 23, 22, 62, 32, 95, 24, 94, 76, 92, 17, 98, 21, 43, 20, 54, 85, 97, 84, 48, 57, 42, 71, 64, 64, 7, 38, 72, 38, 71, 79, 73, 30, 65, 55, 63, 24, 34, 22, 69, 84, 56, 40, 83, 91, 2, 29, 87, 1, 74, 88, 39, 86, 100, 47, 26, 49, 68, 66, 40, 9, 99, 50, 42, 30, 42, 60, 61, 89, 6, 98, 27, 59, 58, 29, 33, 87, 51, 65, 58, 68};
+    int del [] = {26, 72, 55, 40, 48, 61, 34, 40};
+    for(int i: data){
+        treeThread.insertKey(i);
+    }
+    for(int i: del){
+        treeThread.deleteKey(i);
+        treeThread.printTree();
+    }
+    return 0;
     thread t1([&treeThread] { return threadFunction(&treeThread, 3*10^5+1, 1); });
     thread t2([&treeThread] { return threadFunction(&treeThread, 10, 2); });
     thread t3([&treeThread] { return threadFunction(&treeThread, 7*10^5+1, 3); });
