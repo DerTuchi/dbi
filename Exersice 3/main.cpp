@@ -10,14 +10,12 @@
 using namespace std;
 
 int order = 2;
-int incr = 0;
 // BP node
 class Node {
 public:
     int *key, size;
     bool leaf;
     Node **ptr;
-    int id;
 
     Node(){
         key = new int[order];
@@ -25,13 +23,11 @@ public:
         for (int i = 0; i < order+1;i++){
             ptr[i] = nullptr;
         }
-        id = incr;
-        incr ++;
     };
 
 
     void printNode(){
-        cout<<"0."<<id<<"| ";
+        cout<<"| ";
         for (int i=0; i < size; i++){
             cout<< key[i] <<" | ";
         }
@@ -44,10 +40,8 @@ class BPTree {
 public:
     Node* root;
     mutex mutexTree;
-    int count;
     BPTree(){
         root = nullptr;
-        count = 0;
     }
 
     void insertKey(int key){
@@ -360,11 +354,6 @@ public:
 
     void deleteKey(int key){
         cout<< "Try to delete Key: "<<key<<"\n";
-        if(key == 40) count++;
-        if(count == 2){
-            bool a = false;
-        }
-
         int threshhold = ((order/2) + 0.5) - 1;
         if(threshhold <= 0){
             threshhold = 1;
@@ -414,7 +403,7 @@ public:
         cursor->size --;
         // Wird die Min-Größe NICHT eingehalten muss nimmt man ein element vom direkten Nachbarn.
         if (cursor->size < threshhold){
-            if(rightSibling <= cursor->size + 1){
+            if(rightSibling <= parent->size){
                 if(!getKeyFromSibling(parent, cursor, rightSibling, false)){
                     mergeNodes(parent,cursor, rightSibling, true);
                 }
@@ -531,10 +520,10 @@ public:
         }
         cursor->size = cursor->size + child->size;
 
-        /*Löschen des childs PS:Macht irgendwie alles kaputt
+        //Löschen des childs PS:Macht irgendwie alles kaputt
         delete[] child->key;
         delete[] child->ptr;
-        delete child;*/
+        delete child;
 
         //Wenn Parent Root ist und size = 0, wird cursor zum root
         if(parent == root && parent->size == 0){
@@ -590,6 +579,7 @@ public:
                     child->ptr[i] = child->ptr[i-1];
                 }
                 cursor->ptr[cursor->size + 1] = child->ptr[0];
+                child->ptr[child->size] = nullptr;
             }
             child->size--;
             cursor->size ++;
@@ -603,10 +593,11 @@ public:
                 cursor->key[i] = cursor->key[i+1];
             }
             if(!cursor->leaf){
-                for(int i = 0; i < cursor->size + 1; i ++){
-                    cursor->ptr[i] = cursor->ptr[i+1];
+                for(int i = cursor->size + 1; i > 0; i --){
+                    cursor->ptr[i] = cursor->ptr[i-1];
                 }
                 cursor->ptr[0] = child->ptr[child->size];
+                child->ptr[child->size] = nullptr;
             }
             if(parent->key[sibling] != cursor->key[0]){
                 cursor->key[0] = parent->key[sibling];
@@ -636,8 +627,8 @@ void threadFunction(BPTree *tree, int seed, int thread){
         dataVector.push_back(a);
         tree->insertKey(a);
         tree->mutexTree.unlock();
-        this_thread::sleep_for(chrono::nanoseconds(2000));
     }
+    this_thread::sleep_for(chrono::seconds(2));
     for(int i = 0; i < 10; i++){
         int a = rand() % 100 +1;
         tree->mutexTree.lock();
@@ -701,16 +692,6 @@ int main(void) {
     cout<<"\t\t\tThreading Part\n";
     cout<<"-----------------------------------------------------------------------------------------------------------\n";
     BPTree treeThread;
-    int data [] = {40, 16, 14, 61, 6, 87, 98, 20, 72, 71, 31, 76, 50, 100, 86, 61, 95, 59, 64, 31, 55, 76, 93, 92, 100, 24, 21, 8, 89, 46, 32, 20, 58, 71, 68, 85, 54, 5, 16, 24, 33, 8, 92, 82, 38, 69, 93, 36, 57, 71, 72, 57, 46, 23, 22, 62, 32, 95, 24, 94, 76, 92, 17, 98, 21, 43, 20, 54, 85, 97, 84, 48, 57, 42, 71, 64, 64, 7, 38, 72, 38, 71, 79, 73, 30, 65, 55, 63, 24, 34, 22, 69, 84, 56, 40, 83, 91, 2, 29, 87, 1, 74, 88, 39, 86, 100, 47, 26, 49, 68, 66, 40, 9, 99, 50, 42, 30, 42, 60, 61, 89, 6, 98, 27, 59, 58, 29, 33, 87, 51, 65, 58, 68};
-    int del [] = {26, 72, 55, 40, 48, 61, 34, 40};
-    for(int i: data){
-        treeThread.insertKey(i);
-    }
-    for(int i: del){
-        treeThread.deleteKey(i);
-        treeThread.printTree();
-    }
-    return 0;
     thread t1([&treeThread] { return threadFunction(&treeThread, 3*10^5+1, 1); });
     thread t2([&treeThread] { return threadFunction(&treeThread, 10, 2); });
     thread t3([&treeThread] { return threadFunction(&treeThread, 7*10^5+1, 3); });
