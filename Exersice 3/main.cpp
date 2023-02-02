@@ -74,17 +74,19 @@ public:
             }
             /*  Wenn noch Platz im Leaf ist und ein Wert größer im Leaf ist, wird für Value platzt gemacht im Node, indem
              *  die anderen aufrücken und dann an der freien stelle die Value eingefügt wird.*/
-            while(cursor != root && leftChild > -1 && parent->ptr[leftChild]->key[parent->ptr[leftChild]->size - 1] > key){
-                cursor = parent->ptr[leftChild];
+            Node *temp = cursor;
+            while(cursor != root && leftChild > -1){
+                if(parent->ptr[leftChild]->size < order && temp->key[0] == key){
+                    cursor = parent->ptr[leftChild];
+                    break;
+                }
+                temp = parent->ptr[leftChild];
                 leftChild--;
             }
             if(cursor->key[0] == key && cursor->size == order){
-                Node *temp = cursor;
                 for(int i = parent->size; i > 0;i--){
                     if(parent->ptr[i]->size < order && key > parent->ptr[i]->key[parent->ptr[i]->size-1]) cursor = parent->ptr[i];
                 }
-                if(cursor->size == order) cursor = searchAlternativeNode(key);
-                if(cursor == nullptr) cursor = temp;
             }
             if (cursor->size < order){
                 int i = 0;
@@ -252,31 +254,6 @@ public:
             }
         }
     }
-
-    Node* searchAlternativeNode(int key){
-        Node *cursor = root, *parent;
-        int rightChild;
-        while (!(cursor->leaf)){
-            parent = cursor;
-            for (int i = 0; i < cursor->size; i++){
-                if (key - 1 < cursor->key[i]){
-                    cursor = cursor->ptr[i];
-                    rightChild = i+1;
-                    break;
-                }
-                if (i == cursor->size-1){
-                    cursor = cursor->ptr[i+1];
-                    rightChild = i+1;
-                    break;
-                }
-            }
-        }
-        if(rightChild <= parent->size && parent->ptr[rightChild]->size < order){
-            return parent->ptr[rightChild];
-        }
-        return nullptr;
-    }
-
 
     Node* findParent(Node *cursor, Node *child){
         Node *parent;
