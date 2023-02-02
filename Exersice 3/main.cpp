@@ -360,7 +360,7 @@ public:
 
     void deleteKey(int key){
         cout<< "Try to delete Key: "<<key<<"\n";
-        if(key == 34) count++;
+        if(key == 56) count++;
         if(count == 1){
             bool a = false;
         }
@@ -458,8 +458,6 @@ public:
                 parent->ptr[i] = parent->ptr[i+1];
             }
             parent->size --;
-
-            
             // Wenn es kein Leaf ist, sollen auch die Pointer mit gemerged werden
             if(!cursor->leaf){
                for(int i = 0; i < child->size + 1; i++){
@@ -567,6 +565,8 @@ public:
     }
 
     bool getKeyFromSibling(Node *parent, Node* cursor, int sibling, bool leftSibling){
+        // Wenn CHild links ist, den einen Pointer nach rechts verschiebn und vise versa
+
         int threshhold = ((order/2) + 0.5) - 1;
         if(threshhold <= 0){
             threshhold = 1;
@@ -578,12 +578,12 @@ public:
             if(parent->key[sibling-1] != child->key[0]){
                 cursor->key[cursor->size] = parent->key[sibling-1];
                 parent->key[sibling-1] = child->key[0];
-                for (int i = 0; i < child->size; i ++){
-                    child->key[i] = child->key[i+1];
+                for (int i = child->size - 1; i > 0; i --){
+                    child->key[i] = child->key[i-1];
                 }
-                cursor->ptr[cursor->size + 1] = child->ptr[0];
-                for(int i = 0; i < child->size + 1; i ++){
-                    child->ptr[i] = child->ptr[i+1];
+                if(!cursor->leaf){
+                    cursor->ptr[cursor->size + 1] = child->ptr[0];
+                    for(int i = child->size; child->size + 1 > i ; i ++)child->ptr[i] = child->ptr[i-1];
                 }
                 child->size--;
                 cursor->size ++;
@@ -591,10 +591,12 @@ public:
                 // Andernfalls kann man die Werte einfach Klauen und Löschen
             else{
                 cursor->key[cursor->size] = child->key[0];
-                cursor->size ++;
-                for (int i = 0; i < child->size; i ++){
-                    child->key[i] = child->key[i+1];
+                for (int i = child->size - 1; i > 0; i --) child->key[i] = child->key[i-1];
+                if(!cursor->leaf){
+                    cursor->ptr[cursor->size + 1] = child->ptr[0];
+                    for (int i = child->size - 1; i > 0; i--) child->ptr[i] = child->ptr[i-1];
                 }
+                cursor->size ++;
                 child->size--;
                 parent->key[sibling - 1] = child->key[0];
             }
@@ -609,10 +611,10 @@ public:
                 }
                 cursor->key[0] = parent->key[sibling];
                 parent->key[sibling] = child->key[child->size];
-                for(int i = 0; i < cursor->size + 1; i ++){
-                    cursor->ptr[i] = cursor->ptr[i+1];
+                if(!cursor->leaf){
+                    for(int i = 0; i < cursor->size + 1 ; i++) cursor->ptr[i] = cursor->ptr[i+1];
+                    cursor->ptr[0] = child->ptr[child->size];
                 }
-                cursor->ptr[0] = child->ptr[child->size + 1];
                 child->size --;
                 cursor->size ++;
             }
@@ -622,6 +624,10 @@ public:
                     cursor->key[i] = cursor->key[i-1];
                 }
                 cursor->key[0] = child->key[child->size-1];
+                if(!cursor->leaf){
+                    for(int i = 0; i < cursor->size + 1 ; i++) cursor->ptr[i] = cursor->ptr[i+1];
+                    cursor->ptr[0] = child->ptr[child->size];
+                }
                 cursor->size ++;
                 child->size --;
                 parent->key[sibling] = cursor->key[0];
@@ -708,8 +714,8 @@ int main(void) {
     cout<<"\t\t\tThreading Part\n";
     cout<<"-----------------------------------------------------------------------------------------------------------\n";
     BPTree treeThread;
-    int data [] = {40, 16, 14, 61, 6, 87, 98, 20, 72, 71, 31, 76, 50, 100, 86, 61, 95, 59, 64, 31, 55, 76, 93, 92, 100, 24, 21, 8, 89, 46, 32, 20, 58, 71, 68, 85, 54, 5, 16, 24, 33, 8, 92, 82, 38, 69, 93, 36, 57, 71, 72, 57, 46, 23, 22, 62, 32, 95, 24, 94, 76, 92, 17, 98, 21, 43, 20, 54, 85, 97, 84, 48, 57, 42, 71, 64, 64, 7, 38, 72, 38, 71, 79, 73, 30, 65, 55, 63, 24, 34, 22, 69, 84, 56, 40, 83, 91, 2, 29, 87, 1, 74, 88, 39, 86, 100, 47, 26, 49, 68, 66, 40, 9, 99, 50, 42, 30, 42, 60, 61, 89, 6, 98, 27, 59, 58, 29, 33, 87, 51, 65, 58, 68};
-    int del [] = {26, 72, 55, 40, 48, 61, 34, 40};
+    int data [] = {9, 79, 32, 80, 35, 49, 81, 94, 36, 2, 59, 29, 45, 52, 49, 48, 93, 5, 31, 22, 65, 28, 96, 42, 31, 13, 88, 49, 24, 15, 64, 40, 54, 79, 15, 99, 5, 93, 45, 71, 94, 3, 99, 91, 6, 47, 90, 99, 4, 21, 20, 68, 100, 15, 9, 30, 27, 48, 79, 50, 15, 42, 41, 68, 72, 56, 66, 28, 100, 10, 50, 94, 64, 48, 84, 70, 47, 73, 68, 2, 45, 39, 21, 44, 53, 81, 74, 31, 28, 4, 81, 42, 97, 73, 61, 68, 28, 27, 96, 28, 88, 45, 73, 52, 45, 8, 73, 43, 32, 92, 96, 77, 30, 16, 72, 34, 96, 97, 64, 75, 100, 44, 69, 96, 17, 29, 16, 96, 7, 11, 75, 95, 7, 99, 98, 3, 6, 70, 45, 38, 13, 40, 66, 42, 7, 89, 75, 54, 86, 38, 29, 37, 34, 49, 85, 2, 77, 100, 49, 84, 62, 24, 30, 20, 22, 27, 23, 80, 48, 67, 69, 60, 59, 34, 53, 65, 22, 27, 19, 59, 16, 99, 96, 49, 47, 80, 2, 23, 31, 51, 58, 44, 26, 87, 63, 99, 65, 85, 78, 12, 4, 98, 23, 62, 83, 75, 78, 57, 1, 96, 15, 69, 94, 10, 17, 92, 41, 71, 15, 23, 21, 24, 66, 98, 63, 29, 48, 27, 13, 78, 91, 16, 75, 13, 29, 58, 40, 7, 14, 92, 54, 28, 60, 100, 90, 77, 91, 82, 99, 57, 5, 71, 81, 70, 68, 95, 98, 15, 73, 63, 92, 63, 30, 19, 28, 11, 76, 67, 17, 41, 10, 22, 20, 70, 21, 9, 98, 64, 43, 96, 20, 47, 66, 100, 68, 85, 46, 18, 51, 19, 80, 43, 81, 61, 13, 60, 71, 40, 78, 39, 80, 88, 13, 99, 57, 33, 60, 54, 96, 2, 49, 68, 100, 66, 19, 67, 50, 65, 84, 100, 83, 15, 94, 15, 28, 6, 75, 98, 45, 4, 89, 76, 91, 1, 75, 99, 85, 34, 4, 33, 35, 52, 100, 34, 69, 18, 52, 18, 82, 36, 70, 64, 2, 63, 31, 29, 21, 5, 79, 17, 60, 19, 93, 51, 19, 67, 1, 55, 100, 5, 87, 86, 8, 86, 71, 77, 4, 22, 46, 85, 9, 15, 1, 11, 30, 31, 91, 50, 21, 18, 46, 10, 48, 9, 1, 64, 79, 50, 64, 34};
+    int del [] = {87, 39, 28, 5, 12, 36, 40, 91, 56, 86};
     for(int i: data){
         treeThread.insertKey(i);
     }
