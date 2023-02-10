@@ -593,15 +593,12 @@ public:
     }
 
 };
-vector<int> dataVector;
-vector<int> deleteVector;
 void threadFunction(BPTree *tree, int seed, int thread){
     int t = time(0);
     srand(t + seed);
     for(int i = 0; i < 100; i++){
         int a = rand() % 100 + 1;
         tree->mutexTree.lock();
-        dataVector.push_back(a);
         tree->insertKey(a);
         tree->mutexTree.unlock();
     }
@@ -609,18 +606,6 @@ void threadFunction(BPTree *tree, int seed, int thread){
     for(int i = 0; i < 10; i++){
         int a = rand() % 100 +1;
         tree->mutexTree.lock();
-        deleteVector.push_back(a);
-        cout<<"Thread: "<<thread<<" Seed: "<< t <<"\n";
-        cout<<"Try to delete Key: " << a << "\n\n";
-        cout <<"Data: ";
-        for(int b : dataVector){
-            cout << b <<", ";
-        }
-        cout<<"\nDelete: ";
-        for(int b: deleteVector){
-            cout << b << ", ";
-        }
-        cout<<"\n";
         tree->printTree();
         tree->deleteKey(a);
         tree->mutexTree.unlock();
