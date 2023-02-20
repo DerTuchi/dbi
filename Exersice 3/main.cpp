@@ -606,7 +606,6 @@ void threadFunction(BPTree *tree, int seed, int thread){
     for(int i = 0; i < 10; i++){
         int a = rand() % 100 +1;
         tree->mutexTree.lock();
-        tree->printTree();
         tree->deleteKey(a);
         tree->mutexTree.unlock();
         this_thread::sleep_for(chrono::nanoseconds(2000));
